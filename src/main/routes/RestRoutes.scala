@@ -1,0 +1,5 @@
+package routes
+
+trait RestRoutes {
+
+}

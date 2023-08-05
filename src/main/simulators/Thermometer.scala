@@ -1,4 +1,4 @@
-package main.simulators
+package simulators
 
 import scala.util.Random
 

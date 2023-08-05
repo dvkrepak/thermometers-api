@@ -7,5 +7,7 @@ lazy val root = (project in file("."))
     name := "scala"
   )
 
-libraryDependencies +=
-  "com.typesafe.akka" %% "akka-actor" % "2.8.0"
+libraryDependencies ++= Seq(
+  "com.typesafe.akka" %% "akka-actor" % "2.8.0",
+  "org.mongodb.scala" %% "mongo-scala-driver" % "4.9.0"
+)
