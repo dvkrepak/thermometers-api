@@ -17,4 +17,6 @@ object Thermometer {
 
   sealed trait ThermometerStatistics
   // TODO: Finish statistics
+
+  case class Thermometers(thermometers: Vector[Thermometers]) // Msg describing a list of thermometers
 }
