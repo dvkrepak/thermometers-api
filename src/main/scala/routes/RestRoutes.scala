@@ -19,13 +19,15 @@ import scala.concurrent.duration.DurationInt
 class RestRoutes(mongoActor: ActorRef) {
   implicit val timeout: Timeout = Timeout(5.seconds)
 
-  val route: Route = path(  "hello-world") {
+  val route: Route = path(  "thermometers/") {
     get {
-      val futureData = (mongoActor ? FindAllThermometers).mapTo[String]
+      val futureData: Future[Seq[Document]] = (mongoActor ? FindAllThermometers).mapTo[Seq[Document]]
 
       onComplete(futureData) {
         case Success(data) =>
-          complete(HttpEntity(ContentTypes.`application/json`, data))
+          val jsonData = data.map(doc => doc.toJson())
+          val jsonResponse = "[" + jsonData.mkString(",") + "]"
+          complete(HttpEntity(ContentTypes.`application/json`, jsonResponse))
 
         case Failure(ex) =>
           complete(HttpEntity(ContentTypes.`text/plain(UTF-8)`, s"Error: ${ex.getMessage}"))

@@ -6,7 +6,8 @@ import org.mongodb.scala.{MongoClient, MongoDatabase}
 import messages.MongoMessages.FindAllThermometers
 import org.mongodb.scala.bson.Document
 
-import scala.util.{Try, Success, Failure}
+import scala.collection.mutable.ListBuffer
+import scala.util.{Failure, Success, Try}
 
 class MongoActor(connectionString: String = "mongodb://localhost:27017",
                  databaseName: String = "optimsys-db")
@@ -24,13 +25,18 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
         case Failure(ex) =>
           throw ex
       }
+      val documentsBuffer = ListBuffer.empty[Document]
+
       collection.find().subscribe(
         (document: Document) => {
-          senderRef ! document.toJson()
           log.info(s"Completed ${document.toJson()}")
+          documentsBuffer += document
         },
         (error: Throwable) => log.error(s"Error occurred during query: ${error.getMessage}"),
-        () => log.info("Query completed.")
+        () => {
+          senderRef ! documentsBuffer.toList
+          log.info("Query completed.")
+        }
       )
   }
 }
