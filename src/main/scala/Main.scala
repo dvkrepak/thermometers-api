@@ -1,18 +1,16 @@
-import akka.actor.{ActorSystem, Props}
+import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
+import api.RestApi
 
-import actors.MongoActor
 import scala.concurrent.ExecutionContextExecutor
+import scala.concurrent.duration.DurationInt
 
 object Main extends App {
   implicit val system: ActorSystem = ActorSystem("Actors-System")
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
-  private val mongoDbActor = system.actorOf(Props(new MongoActor("mongodb://localhost:27017", "optimsys-db")), "MongoActor")
+
+  private val restApi: RestApi = new RestApi(system, 5.seconds)
 
 
-  import routes.RestRoutes
-  private val restRoutes = new RestRoutes(mongoDbActor)
-
-
-  Http().newServerAt("localhost", 8080).bind(restRoutes.route)
+  Http().newServerAt("localhost", 8080).bind(restApi.route)
 }

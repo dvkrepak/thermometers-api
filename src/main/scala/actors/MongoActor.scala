@@ -12,6 +12,7 @@ import scala.util.{Failure, Success, Try}
 class MongoActor(connectionString: String = "mongodb://localhost:27017",
                  databaseName: String = "optimsys-db")
     extends Actor {
+
   private val mongoClient: MongoClient = MongoClient(connectionString)
   private val database: MongoDatabase = mongoClient.getDatabase(databaseName)
   private val log = Logging(context.system, this)
