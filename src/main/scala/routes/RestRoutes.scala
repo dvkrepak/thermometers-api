@@ -19,7 +19,7 @@ import scala.concurrent.duration.DurationInt
 class RestRoutes(mongoActor: ActorRef) {
   implicit val timeout: Timeout = Timeout(5.seconds)
 
-  val route: Route = path(  "thermometers/") {
+  val route: Route = path(  "thermometers") {
     get {
       val futureData: Future[Seq[Document]] = (mongoActor ? FindAllThermometers).mapTo[Seq[Document]]
 
