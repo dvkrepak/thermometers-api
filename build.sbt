@@ -18,4 +18,6 @@ libraryDependencies ++= Seq(
 
   "org.mongodb.scala" %% "mongo-scala-driver" % "4.9.0",
   "de.heikoseeberger" %% "akka-http-play-json"   % "1.39.2",
+  "io.spray" %% "spray-json" % "1.3.6"
+
 )
