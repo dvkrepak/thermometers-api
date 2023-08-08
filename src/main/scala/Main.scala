@@ -5,6 +5,7 @@ import api.RestApi
 import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration.DurationInt
 
+
 object Main extends App {
   implicit val system: ActorSystem = ActorSystem("Actors-System")
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
