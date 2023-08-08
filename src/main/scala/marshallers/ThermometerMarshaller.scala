@@ -12,9 +12,9 @@ trait ThermometerMarshaller extends PlayJsonSupport {
   implicit val dateReads: Reads[Date] = Reads.dateReads("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
   implicit val dateWrites: Writes[Date] = Writes.dateWrites("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
 
-  implicit val thermometerFormat: OFormat[Thermometer] = Json.format[Thermometer]
 
   // Configure JSON serialization
   // Any None values will be serialized as explicit JSON nulls
   implicit val config: Aux[Json.MacroOptions] = JsonConfiguration(optionHandlers = OptionHandlers.WritesNull)
+  implicit val thermometerFormat: OFormat[Thermometer] = Json.format[Thermometer]
 }
