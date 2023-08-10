@@ -1,12 +1,14 @@
 package simulators
 
 import java.util.Date
+import scala.annotation.unused
 import scala.util.Random
 
 case class Thermometer(description: Option[String],
                        created_at: Option[Date],
                        edited_at: Option[Date]) {
 
+  @unused
   def getTemperature: Option[Int] = {
     simulateWork()
   }
@@ -30,6 +32,7 @@ case class Thermometer(description: Option[String],
 
 
 object Thermometer {
+
   /**
    * Creates a new 'Thermometer' instance with a default 'created_at' value if empty
    *
@@ -40,5 +43,15 @@ object Thermometer {
   def withDefaultCreated(thermometer: Thermometer): Thermometer = thermometer.created_at match {
     case Some(_) => thermometer
     case None => thermometer.copy(created_at = Some(new Date()))
+  }
+
+  /**
+   * Creates new `Thermometer object` with 'edited_at' field set to current date and time
+   *
+   * @param thermometer The `Thermometer` object to update the 'edited_at' field for
+   * @return A new `Thermometer` object with the `edited_at` field set to the current date and time.
+   */
+  def setEditedAt(thermometer: Thermometer): Thermometer = {
+    thermometer.copy(edited_at = Some(new Date()))
   }
 }

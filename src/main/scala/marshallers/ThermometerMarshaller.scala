@@ -1,7 +1,7 @@
 package marshallers
 
 import de.heikoseeberger.akkahttpplayjson.PlayJsonSupport
-import play.api.libs.json.JsonConfiguration.Aux
+import messages.MongoMessages.ThermometerEditor
 import play.api.libs.json._
 import simulators.Thermometer
 
@@ -12,9 +12,7 @@ trait ThermometerMarshaller extends PlayJsonSupport {
   implicit val dateReads: Reads[Date] = Reads.dateReads("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
   implicit val dateWrites: Writes[Date] = Writes.dateWrites("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
 
-
   // Configure JSON serialization
-  // Any None values will be serialized as explicit JSON nulls
-  implicit val config: Aux[Json.MacroOptions] = JsonConfiguration(optionHandlers = OptionHandlers.WritesNull)
   implicit val thermometerFormat: OFormat[Thermometer] = Json.format[Thermometer]
+  implicit val thermometerEditorFormat: OFormat[ThermometerEditor] = Json.format[ThermometerEditor]
 }
