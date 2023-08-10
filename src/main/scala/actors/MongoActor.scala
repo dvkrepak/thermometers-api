@@ -5,7 +5,7 @@ import akka.event.{Logging, LoggingAdapter}
 import messages.MongoMessages._
 import org.mongodb.scala.bson.{BsonObjectId, Document}
 import org.mongodb.scala.model.Filters
-import org.mongodb.scala.result.{InsertOneResult, UpdateResult}
+import org.mongodb.scala.result.{DeleteResult, InsertOneResult, UpdateResult}
 import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase}
 
 import scala.collection.mutable.ListBuffer
@@ -118,6 +118,7 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
               senderRef ! Some(result)
               found = true
               log.info(s"FindOne Document: $result")
+              log.info("we are here")
             },
             (error: Throwable) => log.error(s"Error occurred during query: ${error.getMessage}"),
             () => {
@@ -127,6 +128,20 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
               log.info("FindOne completed")
             }
         )
+      }
+    case DeleteThermometer(_id: String) =>
+      val senderRef: ActorRef = sender()
+      if (requireCorrectId(_id, senderRef)) {
+        val collection: MongoCollection[Document] = getCollection("thermometers")
+        collection.deleteOne(Filters.eq("_id", BsonObjectId(_id)))
+          .subscribe(
+            (result: DeleteResult) => {
+              senderRef ! result
+              log.info(s"DeletedOne Document: $result")
+            },
+            (error: Throwable) => log.error(s"Error occurred during query: ${error.getMessage}"),
+            () => log.info("DeleteOne completed")
+          )
       }
   }
 }

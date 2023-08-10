@@ -3,9 +3,9 @@ package api
 import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.Timeout
-import messages.MongoMessages.{CreateThermometer, EditThermometer, FindAllThermometers, FindThermometer}
+import messages.MongoMessages.{CreateThermometer, DeleteThermometer, EditThermometer, FindAllThermometers, FindThermometer}
 import org.mongodb.scala.bson.Document
-import org.mongodb.scala.result.{InsertOneResult, UpdateResult}
+import org.mongodb.scala.result.{DeleteResult, InsertOneResult, UpdateResult}
 
 import scala.concurrent.Future
 
@@ -32,4 +32,7 @@ trait ThermometerApi {
     (mongoActor ? FindThermometer(_id)).mapTo[Option[Document]]
   }
 
+  protected def deleteThermometer(_id: String): Future[DeleteResult] = {
+    (mongoActor ? DeleteThermometer(_id)).mapTo[DeleteResult]
+  }
 }
