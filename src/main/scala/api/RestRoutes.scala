@@ -15,71 +15,86 @@ import scala.util.{Failure, Success}
 
 
 trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
+  val api = "api"
+  val version = "v1"
+  private val service = "thermometers"
 
-  private val getAllThermometers: Route = path("thermometers") {
+  private val getThermometersList: Route = pathPrefix(api / version / service / "list") {
     get {
-      // GET host/thermometers
-      val futureData: Future[Seq[Document]] = getThermometers.mapTo[Seq[Document]]
+      // GET api/v1/thermometers/list
+      pathEndOrSingleSlash {
+        val futureData: Future[Seq[Document]] = getThermometers.mapTo[Seq[Document]]
 
-      onComplete(futureData) {
-        case Success(data) =>
-          val jsonData = data.map(_.toJson)
-          val jsonResponse = "[" + jsonData.mkString(",") + "]"
-          complete(HttpEntity(ContentTypes.`application/json`, jsonResponse))
-        case Failure(ex) =>
-          complete(HttpEntity(ContentTypes.`text/plain(UTF-8)`, s"Error: ${ex.getMessage}"))
-      }
-    }
-  }
-
-  private val postOneThermometer: Route = path("thermometer") {
-    post {
-      // POST host/thermometer/:thermometer
-      entity(as[Thermometer]) { thermometer => {
-
-        val withDefaultThermometer: Thermometer = Thermometer.withDefaultCreated(thermometer)
-        val futureResponse: Future[BsonObjectId] =
-          createThermometer(Json.toJson(withDefaultThermometer).toString())
-
-        handleBasicResponse(futureResponse)
+        onComplete(futureData) {
+          case Success(data) =>
+            val jsonData = data.map(_.toJson)
+            val jsonResponse = "[" + jsonData.mkString(",") + "]"
+            complete(HttpEntity(ContentTypes.`application/json`, jsonResponse))
+          case Failure(ex) =>
+            complete(HttpEntity(ContentTypes.`text/plain(UTF-8)`, s"Error: ${ex.getMessage}"))
         }
       }
     }
   }
 
-  private val editThermometer: Route = path("edit" / "thermometer") {
-    post {
-      // POST host/edit/thermometer/:thermometer
-      entity(as[ThermometerEditor]) { editor => {
-        val data = Json.toJson(Thermometer.setEditedAt(editor.data))
-        val futureResponse: Future[UpdateResult] =
-          editThermometer(editor.thermometerId, data.toString())
+  private val getThermometerDetail: Route = pathPrefix(api / version / service / Segment) { _id =>
+    get {
+      // GET api/v1/thermometers/{_id: String}
+      pathEndOrSingleSlash {
+        val futureResponse: Future[Option[Document]] = findThermometer(_id)
 
-        handleBasicResponse(futureResponse)
+        onComplete(futureResponse) {
+          case Success(data) =>
+            val resultJson = data.map(_.toJson).getOrElse(Json.toJson(None))
+            complete(HttpEntity(ContentTypes.`application/json`, resultJson.toString))
+          case Failure(ex) =>
+            complete(HttpEntity(ContentTypes.`text/plain(UTF-8)`, s"Error: ${ex.getMessage}"))
         }
       }
     }
   }
 
-  private val getThermometer: Route = path("thermometer" / Segment) { _id =>
-    get {
-      // GET host/thermometer/:_id
-      val futureResponse: Future[Option[Document]] = findThermometer(_id)
+  private val createThermometer: Route = pathPrefix(api / version / service / "create") {
+    post {
+      // POST api/v1/thermometers/create
+      pathEndOrSingleSlash {
+        entity(as[Thermometer]) { thermometer => {
 
-      onComplete(futureResponse) {
-        case Success(data) =>
-          val resultJson = data.map(_.toJson).getOrElse(Json.toJson(None))
-          complete(HttpEntity(ContentTypes.`application/json`, resultJson.toString))
-        case Failure(ex) =>
-          complete(HttpEntity(ContentTypes.`text/plain(UTF-8)`, s"Error: ${ex.getMessage}"))
+          val withDefaultThermometer: Thermometer = Thermometer.withDefaultCreated(thermometer)
+          val futureResponse: Future[BsonObjectId] =
+            createThermometer(Json.toJson(withDefaultThermometer).toString())
+
+          handleBasicResponse(futureResponse)
+          }
+        }
       }
     }
   }
 
-  private val postDeleteThermometer: Route = path("delete" / "thermometer" / Segment) { _id =>
+  private val updateThermometer: Route = pathPrefix(api / version / service / "update") {
+    patch {
+      // PATCH api/v1/thermometers/update
+      pathEndOrSingleSlash {
+        entity(as[ThermometerEditor]) { editor => {
+          val data = Json.toJson(Thermometer.setEditedAt(editor.data))
+          val futureResponse: Future[UpdateResult] =
+            editThermometer(editor.thermometerId, data.toString())
+
+          handleBasicResponse(futureResponse)
+          }
+        }
+      }
+    }
+  }
+
+
+  private val deleteThermometer: Route = path(api / version / service / Segment) { _id =>
     delete {
-      val futureResponse: Future[Long] = deleteThermometer(_id)
-      handleBasicResponse(futureResponse)
+      // DELETE api/v1/thermometers/delete/{_id: String}
+      pathEndOrSingleSlash {
+        val futureResponse: Future[Long] = deleteThermometer(_id)
+        handleBasicResponse(futureResponse)
+      }
     }
   }
 
@@ -92,5 +107,6 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
     }
   }
 
-  val route: Route = getAllThermometers ~ postOneThermometer ~ editThermometer ~ getThermometer ~ postDeleteThermometer
+  val route: Route = getThermometersList ~ getThermometerDetail ~ createThermometer ~
+    updateThermometer ~ deleteThermometer
 }

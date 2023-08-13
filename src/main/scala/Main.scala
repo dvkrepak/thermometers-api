@@ -25,7 +25,7 @@ object Main extends App {
   private val dataGetter: DataGetter = DataGetter(adapter, system)
 
   // Data getter settings
-  private val isActive: Boolean = true // Set to true if you want to get new data
+  private val isActive: Boolean = false // Set `true` if you want to generate new data
   if (isActive) {
     val delay = 0.seconds // Change to your desired delay
     val interval = 10.seconds // Change to your desired interval

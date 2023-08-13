@@ -159,8 +159,6 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
       }
 
     case SaveData(thermometerAction: String) =>
-      val senderRef: ActorRef = sender()
-
 
       val doc = Document(thermometerAction)
       val collection = getCollection("thermometerActions")

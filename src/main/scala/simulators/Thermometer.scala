@@ -12,7 +12,7 @@ case class Thermometer(_id: Option[ObjectId] ,
                        editedAt: Option[Date] = None) {
 
   def requestTemperature(actor: ActorRef): Unit = {
-    actor ! ThermometerAction(this, simulateWork())
+    actor ! ThermometerAction(thermometerId = _id.get, simulateWork())
   }
 
   /**

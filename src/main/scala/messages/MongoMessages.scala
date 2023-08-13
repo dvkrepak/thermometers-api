@@ -1,5 +1,6 @@
 package messages
 
+import akka.http.scaladsl.model.headers.Date
 import simulators.Thermometer
 
 object MongoMessages {
@@ -13,6 +14,7 @@ object MongoMessages {
 
   // Statistics operation
   case class SaveData(json: String)
+  case class FindData(_id: String, createdAtMin: Date, createdAtMax: Date)
 
   // Thermometer helper messages
   case class ThermometerEditor(thermometerId: String, data: Thermometer)
