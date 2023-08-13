@@ -1,16 +1,18 @@
 package simulators
 
+import akka.actor.ActorRef
+import org.mongodb.scala.bson.ObjectId
+
 import java.util.Date
-import scala.annotation.unused
 import scala.util.Random
 
-case class Thermometer(description: Option[String],
-                       created_at: Option[Date],
-                       edited_at: Option[Date]) {
+case class Thermometer(_id: Option[ObjectId] ,
+                       description: Option[String] = None,
+                       createdAt: Option[Date] = None,
+                       editedAt: Option[Date] = None) {
 
-  @unused
-  def getTemperature: Option[Int] = {
-    simulateWork()
+  def requestTemperature(actor: ActorRef): Unit = {
+    actor ! ThermometerAction(this, simulateWork())
   }
 
   /**
@@ -30,8 +32,12 @@ case class Thermometer(description: Option[String],
 }
 
 
-
 object Thermometer {
+
+  def apply(description: Option[String], createdAt: Option[Date], editedAt: Option[Date]): Thermometer = {
+    val id = new ObjectId()
+    Thermometer(Some(id), description, createdAt, editedAt)
+  }
 
   /**
    * Creates a new 'Thermometer' instance with a default 'created_at' value if empty
@@ -40,9 +46,9 @@ object Thermometer {
    * @return Copied from input with `created_at` set to the current date if it was missing,
    *         Instance from input otherwise
    */
-  def withDefaultCreated(thermometer: Thermometer): Thermometer = thermometer.created_at match {
+  def withDefaultCreated(thermometer: Thermometer): Thermometer = thermometer.createdAt match {
     case Some(_) => thermometer
-    case None => thermometer.copy(created_at = Some(new Date()))
+    case None => thermometer.copy(createdAt = Some(new Date()))
   }
 
   /**
@@ -52,6 +58,6 @@ object Thermometer {
    * @return A new `Thermometer` object with the `edited_at` field set to the current date and time.
    */
   def setEditedAt(thermometer: Thermometer): Thermometer = {
-    thermometer.copy(edited_at = Some(new Date()))
+    thermometer.copy(editedAt = Some(new Date()))
   }
 }

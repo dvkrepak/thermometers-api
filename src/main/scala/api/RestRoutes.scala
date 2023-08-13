@@ -5,8 +5,8 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{RequestContext, Route, RouteResult}
 import marshallers.ThermometerMarshaller
 import messages.MongoMessages.ThermometerEditor
-import org.mongodb.scala.bson.Document
-import org.mongodb.scala.result.{DeleteResult, InsertOneResult, UpdateResult}
+import org.mongodb.scala.bson.{BsonObjectId, Document}
+import org.mongodb.scala.result.UpdateResult
 import play.api.libs.json.Json
 import simulators.Thermometer
 
@@ -38,11 +38,11 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
       entity(as[Thermometer]) { thermometer => {
 
         val withDefaultThermometer: Thermometer = Thermometer.withDefaultCreated(thermometer)
-        val futureResponse: Future[InsertOneResult] =
+        val futureResponse: Future[BsonObjectId] =
           createThermometer(Json.toJson(withDefaultThermometer).toString())
 
         handleBasicResponse(futureResponse)
-      }
+        }
       }
     }
   }
@@ -53,7 +53,7 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
       entity(as[ThermometerEditor]) { editor => {
         val data = Json.toJson(Thermometer.setEditedAt(editor.data))
         val futureResponse: Future[UpdateResult] =
-          editThermometer(editor._id, data.toString())
+          editThermometer(editor.thermometerId, data.toString())
 
         handleBasicResponse(futureResponse)
         }
@@ -78,7 +78,7 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
 
   private val postDeleteThermometer: Route = path("delete" / "thermometer" / Segment) { _id =>
     delete {
-      val futureResponse: Future[DeleteResult] = deleteThermometer(_id)
+      val futureResponse: Future[Long] = deleteThermometer(_id)
       handleBasicResponse(futureResponse)
     }
   }
