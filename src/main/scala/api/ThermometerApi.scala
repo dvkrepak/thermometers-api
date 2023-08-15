@@ -25,7 +25,7 @@ trait ThermometerApi {
   }
 
   protected def editThermometer(_id: String, json: String): Future[UpdateResult] = {
-    (mongoActor ? EditThermometer(_id, json)).mapTo[UpdateResult]
+    (mongoActor ? UpdateThermometer(_id, json)).mapTo[UpdateResult]
   }
 
   protected def findThermometer(_id: String): Future[Option[Document]] = {
@@ -36,7 +36,25 @@ trait ThermometerApi {
     (mongoActor ? DeleteThermometer(_id)).mapTo[Long]
   }
 
-  protected def saveData(thermometerAction: String): Future[BsonObjectId] = {
-    (mongoActor ? SaveData(thermometerAction)).mapTo[BsonObjectId]
+  protected def createData(json: String): Future[BsonObjectId] = {
+    (mongoActor ? CreateData(json)).mapTo[BsonObjectId]
+  }
+
+  protected def findDataWithRangeWithId(thermometerId: String,
+                                        createdAtMin: String,
+                                        createdAtMax: String): Future[Seq[Document]] = {
+    val correctDates = Validators.requireCorrectDateFormat(createdAtMax) &&
+      Validators.requireCorrectDateFormat(createdAtMax)
+
+    if (!correctDates) {
+       throw new IllegalArgumentException(
+         "createdAtMin and createdAtMax must be in the format 'yyyy-MM-dd'T'HH:mm:ss.SSSZ'")
+    }
+
+    (mongoActor ? FindDataWithRangeWithId(thermometerId, createdAtMin, createdAtMax)).mapTo[Seq[Document]]
+  }
+
+  protected def findDataWithId(thermometerId: String): Future[Seq[Document]] = {
+    (mongoActor ? FindDataWithId(thermometerId)).mapTo[Seq[Document]]
   }
 }

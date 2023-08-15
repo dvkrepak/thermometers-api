@@ -9,7 +9,7 @@ import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration.DurationInt
 
 
-object Main extends App {
+object Settings extends App {
   // Akka settings
   implicit val system: ActorSystem = ActorSystem("Actors-System")
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher

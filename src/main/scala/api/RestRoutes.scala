@@ -10,8 +10,8 @@ import org.mongodb.scala.result.UpdateResult
 import play.api.libs.json.Json
 import simulators.Thermometer
 
-import scala.concurrent.Future
-import scala.util.{Failure, Success}
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success, Try}
 
 
 trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
@@ -88,13 +88,52 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
   }
 
 
-  private val deleteThermometer: Route = path(api / version / service / Segment) { _id =>
+  private val deleteThermometer: Route = pathPrefix(api / version / service / Segment) { _id =>
     delete {
       // DELETE api/v1/thermometers/delete/{_id: String}
       pathEndOrSingleSlash {
         val futureResponse: Future[Long] = deleteThermometer(_id)
+
         handleBasicResponse(futureResponse)
       }
+    }
+  }
+  private val getDataWithRangeDetail: Route = pathPrefix(api / version / "data" / Segment) { thermometerId =>
+    get {
+      pathEndOrSingleSlash {
+        parameters("createdAtMin".as[String], "createdAtMax".as[String]) { (createdAtMin, createdAtMax) =>
+
+          val futureResponse: Future[Seq[Document]] =
+            Try(findDataWithRangeWithId(thermometerId, createdAtMin, createdAtMax)) match {
+              case Success(future) => future
+              case Failure(e: IllegalArgumentException) =>
+                Future.failed(e)
+            }
+
+          handleBasicJsonResponse(futureResponse)
+        }
+      }
+    }
+  }
+
+  private val getDataDetail: Route = pathPrefix(api / version / "data" / Segment) { thermometerId =>
+    get {
+      pathEndOrSingleSlash {
+        val futureResponse: Future[Seq[Document]] =
+          findDataWithId(thermometerId)
+
+        handleBasicJsonResponse(futureResponse)
+        }
+      }
+    }
+
+  private def handleBasicJsonResponse(futureResponse: Future[Seq[Document]]): RequestContext => Future[RouteResult] = {
+    onComplete(futureResponse) {
+      case Success(data) =>
+        val resultJson = data.map(_.toJson)
+        complete(HttpEntity(ContentTypes.`application/json`, resultJson.toString))
+      case Failure(ex) =>
+        complete(HttpEntity(ContentTypes.`text/plain(UTF-8)`, s"Error: ${ex.getMessage}"))
     }
   }
 
@@ -108,5 +147,5 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
   }
 
   val route: Route = getThermometersList ~ getThermometerDetail ~ createThermometer ~
-    updateThermometer ~ deleteThermometer
+    updateThermometer ~ deleteThermometer ~ getDataWithRangeDetail ~ getDataDetail
 }

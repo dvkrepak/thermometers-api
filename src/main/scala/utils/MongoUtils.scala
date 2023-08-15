@@ -1,19 +1,25 @@
 package utils
 
 import org.mongodb.scala.MongoCollection
-import org.mongodb.scala.bson.{BsonObjectId, Document}
-import org.mongodb.scala.model.Filters
+import org.mongodb.scala.bson.conversions.Bson
+import org.mongodb.scala.bson.{Document, ObjectId}
 import org.mongodb.scala.result.{DeleteResult, InsertOneResult, UpdateResult}
 
+import java.util.Date
 import scala.concurrent.Future
 
 object MongoUtils {
+
+  private def findCollectionObjectsWithFilter(collection: MongoCollection[Document],
+                                              filter: Bson): Future[Seq[Document]] = {
+    collection.find(filter).toFuture()
+  }
 
   def findCollectionObjects(collection: MongoCollection[Document]): Future[Seq[Document]] = {
     collection.find().toFuture()
   }
 
-  def findCollectionObject(collection: MongoCollection[Document], _id: String): Future[Option[Document]] = {
+  def findCollectionObjectWithId(collection: MongoCollection[Document], _id: String): Future[Option[Document]] = {
     val filter = MongoFilters.idFilter(_id)
     collection
       .find(filter)
@@ -35,10 +41,24 @@ object MongoUtils {
   }
 
   def updateCollectionObject(collection: MongoCollection[Document], _id: String, data: String): Future[UpdateResult] = {
-    val filter = Filters.eq("_id", BsonObjectId(_id))
+    val filter = MongoFilters.idFilter(_id)
     val update = Document("$set" -> Document(data))
     collection
       .updateOne(filter, update)
       .toFuture()
+  }
+
+  def findWithDateRangeWithThermometerId(collection: MongoCollection[Document],
+                                          _id: String,
+                                          createdAtMin: String,
+                                          createdAtMax: String): Future[Seq[Document]] = {
+    val filter = MongoFilters.thermometerIdWithDateRangeFilter(_id, createdAtMin, createdAtMax)
+    findCollectionObjectsWithFilter(collection, filter)
+  }
+
+  def findWithThermometerId(collection: MongoCollection[Document],
+                            thermometerId: String): Future[Seq[Document]] = {
+    val filter = MongoFilters.thermometerIdFilter(thermometerId)
+    findCollectionObjectsWithFilter(collection, filter)
   }
 }
