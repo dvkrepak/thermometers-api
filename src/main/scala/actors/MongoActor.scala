@@ -148,5 +148,20 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
         case Failure(error) =>
           log.error(s"Error occurred during FindDataWithId: ${error.getMessage}")
       }
+
+    case FindDataSummarized =>
+      val senderRef: ActorRef = sender()
+
+      val collection = getCollection("thermometerActions")
+      val findFuture = MongoUtils.findSummaries(collection)
+
+      findFuture.onComplete {
+        case Success(result) =>
+          val resultList = result.toList
+          senderRef ! resultList
+          log.info(s"Found ${resultList.size} actions summarized")
+        case Failure(error) =>
+          log.error(s"Error occurred during FindDataSummaries: ${error.getMessage}")
+      }
   }
 }

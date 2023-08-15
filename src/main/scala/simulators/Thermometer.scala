@@ -6,13 +6,15 @@ import org.mongodb.scala.bson.ObjectId
 import java.util.Date
 import scala.util.Random
 
-case class Thermometer(_id: Option[ObjectId] ,
+case class Thermometer(_id: ObjectId = new ObjectId(),
                        description: Option[String] = None,
                        createdAt: Option[Date] = None,
                        editedAt: Option[Date] = None) {
 
+  require(_id.toString.length == 24)
+
   def requestTemperature(actor: ActorRef): Unit = {
-    actor ! ThermometerAction(thermometerId = _id.get, simulateWork())
+    actor ! ThermometerAction(thermometerId = _id, simulateWork())
   }
 
   /**
@@ -36,7 +38,7 @@ object Thermometer {
 
   def apply(description: Option[String], createdAt: Option[Date], editedAt: Option[Date]): Thermometer = {
     val id = new ObjectId()
-    Thermometer(Some(id), description, createdAt, editedAt)
+    Thermometer(id, description, createdAt, editedAt)
   }
 
   /**

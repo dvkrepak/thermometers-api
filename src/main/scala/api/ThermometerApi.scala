@@ -16,6 +16,13 @@ trait ThermometerApi {
   implicit val requestTimeout: Timeout
   private lazy val mongoActor: ActorRef = createMongoDbActor()
 
+  private def validateId(id: String, name: String): Unit = {
+    if (!Validators.requireCorrectId(id)) {
+      throw new IllegalArgumentException(
+        s"$name must have exactly 24 letters and consist of hex letters and digits only")
+    }
+  }
+
   protected def getThermometers: Future[Seq[Document]] = {
     (mongoActor ? FindAllThermometers).mapTo[Seq[Document]]
   }
@@ -24,15 +31,21 @@ trait ThermometerApi {
     (mongoActor ? CreateThermometer(jsonString)).mapTo[BsonObjectId]
   }
 
-  protected def editThermometer(_id: String, json: String): Future[UpdateResult] = {
-    (mongoActor ? UpdateThermometer(_id, json)).mapTo[UpdateResult]
+  protected def editThermometer(thermometerId: String, json: String): Future[UpdateResult] = {
+    validateId(thermometerId, "thermometerId")
+
+    (mongoActor ? UpdateThermometer(thermometerId, json)).mapTo[UpdateResult]
   }
 
   protected def findThermometer(_id: String): Future[Option[Document]] = {
+    validateId(_id, "_id")
+
     (mongoActor ? FindThermometer(_id)).mapTo[Option[Document]]
   }
 
   protected def deleteThermometer(_id: String): Future[Long] = {
+    validateId(_id, "_id")
+
     (mongoActor ? DeleteThermometer(_id)).mapTo[Long]
   }
 
@@ -43,6 +56,8 @@ trait ThermometerApi {
   protected def findDataWithRangeWithId(thermometerId: String,
                                         createdAtMin: String,
                                         createdAtMax: String): Future[Seq[Document]] = {
+    validateId(thermometerId, "thermometerId")
+
     val correctDates = Validators.requireCorrectDateFormat(createdAtMax) &&
       Validators.requireCorrectDateFormat(createdAtMax)
 
@@ -55,6 +70,12 @@ trait ThermometerApi {
   }
 
   protected def findDataWithId(thermometerId: String): Future[Seq[Document]] = {
+    validateId(thermometerId, "thermometerId")
+
     (mongoActor ? FindDataWithId(thermometerId)).mapTo[Seq[Document]]
+  }
+
+  protected def findDataSummarized(): Future[Seq[Document]] = {
+    (mongoActor ? FindDataSummarized).mapTo[Seq[Document]]
   }
 }

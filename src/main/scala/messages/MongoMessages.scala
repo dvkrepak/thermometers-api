@@ -14,10 +14,11 @@ object MongoMessages {
   case class FindThermometer(_id: String)
   case class DeleteThermometer(_id: String)
 
-  // Statistics operation
+  // Operation with data
   case class CreateData(json: String)
   case class FindDataWithRangeWithId(thermometerId: String, createdAtMin: String, createdAtMax: String)
   case class FindDataWithId(thermometerId: String)
+  object FindDataSummarized
 
   // Thermometer helper messages
   case class ThermometerEditor(thermometerId: String, data: Thermometer)

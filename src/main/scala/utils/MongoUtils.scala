@@ -1,11 +1,10 @@
 package utils
 
+import org.bson.conversions.Bson
 import org.mongodb.scala.MongoCollection
-import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.bson.{Document, ObjectId}
+import org.mongodb.scala.bson.Document
 import org.mongodb.scala.result.{DeleteResult, InsertOneResult, UpdateResult}
 
-import java.util.Date
 import scala.concurrent.Future
 
 object MongoUtils {
@@ -13,6 +12,11 @@ object MongoUtils {
   private def findCollectionObjectsWithFilter(collection: MongoCollection[Document],
                                               filter: Bson): Future[Seq[Document]] = {
     collection.find(filter).toFuture()
+  }
+
+  private def findCollectionObjectsWithAggregation(collection: MongoCollection[Document],
+                                                    aggregation: Seq[Bson]) = {
+    collection.aggregate(aggregation).toFuture()
   }
 
   def findCollectionObjects(collection: MongoCollection[Document]): Future[Seq[Document]] = {
@@ -60,5 +64,10 @@ object MongoUtils {
                             thermometerId: String): Future[Seq[Document]] = {
     val filter = MongoFilters.thermometerIdFilter(thermometerId)
     findCollectionObjectsWithFilter(collection, filter)
+  }
+
+  def findSummaries(collection: MongoCollection[Document]): Future[Seq[Document]] = {
+    val aggregation = MongoAggregations.summaryAggregation
+    findCollectionObjectsWithAggregation(collection, aggregation)
   }
 }
