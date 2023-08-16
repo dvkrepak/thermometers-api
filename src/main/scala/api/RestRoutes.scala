@@ -5,8 +5,8 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{RequestContext, Route, RouteResult}
 import marshallers.ThermometerMarshaller
 import messages.MongoMessages.ThermometerEditor
-import org.mongodb.scala.bson.{BsonObjectId, Document}
-import org.mongodb.scala.result.UpdateResult
+import org.mongodb.scala.bson.Document
+import org.mongodb.scala.result.{DeleteResult, InsertOneResult, UpdateResult}
 import play.api.libs.json.Json
 import simulators.Thermometer
 import utils.RouteUtils
@@ -50,7 +50,7 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
         entity(as[Thermometer]) { thermometer => {
 
           val withDefaultThermometer: Thermometer = Thermometer.withDefaultCreated(thermometer)
-          val futureResponse: Future[BsonObjectId] =
+          val futureResponse: Future[InsertOneResult] =
             createThermometer(Json.toJson(withDefaultThermometer).toString())
 
           handleBasicResponse(futureResponse)
@@ -79,12 +79,12 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
   }
 
 
-  private val deleteThermometer: Route = pathPrefix(api / version / service / Segment) { _id =>
+  private val deleteThermometer: Route = pathPrefix(api / version / service / "delete" / Segment) { _id =>
     delete {
       // DELETE api/v1/thermometers/delete/{_id: String}
       pathEndOrSingleSlash {
-        lazy val lazyResponse: Future[Long] = deleteThermometer(_id)
-        val futureResponse = withValidation(lazyResponse).mapTo[Long]
+        lazy val lazyResponse: Future[DeleteResult] = deleteThermometer(_id)
+        val futureResponse = withValidation(lazyResponse).mapTo[DeleteResult]
 
         handleBasicResponse(futureResponse)
       }
@@ -160,7 +160,7 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
   private def withValidation(futureResponse: => Future[Any]): Future[Any] = {
     Try(futureResponse) match {
       case Success(future) => future
-      case Failure(e: IllegalArgumentException) =>
+      case Failure(e: Throwable) =>
         Future.failed(e)
     }
   }
@@ -181,7 +181,7 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
       case Success(data) =>
         complete(StatusCodes.OK, data.toString)
       case Failure(ex) =>
-        complete(StatusCodes.InternalServerError, s"Error: ${ex.getMessage}")
+        complete(StatusCodes.BadRequest, s"Error: ${ex.getMessage}")
     }
   }
 

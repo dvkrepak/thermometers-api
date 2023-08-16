@@ -5,7 +5,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import messages.MongoMessages._
 import org.mongodb.scala.bson.{BsonObjectId, Document}
-import org.mongodb.scala.result.UpdateResult
+import org.mongodb.scala.result.{DeleteResult, InsertOneResult, UpdateResult}
 
 import scala.concurrent.Future
 
@@ -37,8 +37,8 @@ trait ThermometerApi {
     (mongoActor ? FindAllThermometers).mapTo[Seq[Document]]
   }
 
-  protected def createThermometer(jsonString: String): Future[BsonObjectId] = {
-    (mongoActor ? CreateThermometer(jsonString)).mapTo[BsonObjectId]
+  protected def createThermometer(jsonString: String): Future[InsertOneResult] = {
+    (mongoActor ? CreateThermometer(jsonString)).mapTo[InsertOneResult]
   }
 
   protected def editThermometer(thermometerId: String, json: String): Future[UpdateResult] = {
@@ -53,10 +53,10 @@ trait ThermometerApi {
     (mongoActor ? FindThermometer(_id)).mapTo[Seq[Document]]
   }
 
-  protected def deleteThermometer(_id: String): Future[Long] = {
+  protected def deleteThermometer(_id: String): Future[DeleteResult] = {
     validateId(_id, "_id")
 
-    (mongoActor ? DeleteThermometer(_id)).mapTo[Long]
+    (mongoActor ? DeleteThermometer(_id)).mapTo[DeleteResult]
   }
 
   protected def createReport(json: String): Future[BsonObjectId] = {
