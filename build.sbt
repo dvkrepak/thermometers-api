@@ -15,6 +15,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.play" %% "play-ws-standalone-json" % "2.1.10",
   "com.typesafe.akka" %% "akka-stream" % AkkaVersion,
   "com.typesafe.akka" %% "akka-http" % AkkaHttpVersion,
+  "com.typesafe.akka" %% "akka-http-caching" % AkkaHttpVersion,
 
   "org.mongodb.scala" %% "mongo-scala-driver" % "4.9.0",
   "de.heikoseeberger" %% "akka-http-play-json"   % "1.39.2",

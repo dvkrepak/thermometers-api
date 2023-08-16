@@ -2,13 +2,14 @@ package actors
 
 import akka.actor.{Actor, ActorRef, Status}
 import akka.event.{Logging, LoggingAdapter}
-
+import akka.http.caching.scaladsl.Cache
+import akka.http.scaladsl.model.Uri
 import messages.MongoMessages._
-import utils.MongoUtils
 import org.mongodb.scala.bson.Document
 import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase}
+import utils.{CacheSettings, MongoUtils}
 
-import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success, Try}
 
 class MongoActor(connectionString: String = "mongodb://localhost:27017",
@@ -19,6 +20,8 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
   private val database: MongoDatabase = mongoClient.getDatabase(databaseName)
   private val log: LoggingAdapter = Logging(context.system, this)
   implicit val executionContext: ExecutionContextExecutor = ExecutionContext.global
+
+  val lfuCache: Cache[Uri, Seq[Document]] = CacheSettings.lfuDocumentCache(context.system)
 
   private def getCollection(name: String): MongoCollection[Document] = {
     Try(database.getCollection(name)) match {
@@ -152,16 +155,37 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
     case FindDataSummarized =>
       val senderRef: ActorRef = sender()
 
-      val collection = getCollection("thermometerActions")
-      val findFuture = MongoUtils.findSummaries(collection)
+      val cacheKey = Uri("api/version/service/data/list")
+      val cachedResponse: Option[Future[Seq[Document]]] = lfuCache.get(cacheKey)
 
-      findFuture.onComplete {
-        case Success(result) =>
-          val resultList = result.toList
-          senderRef ! resultList
-          log.info(s"Found ${resultList.size} actions summarized")
-        case Failure(error) =>
-          log.error(s"Error occurred during FindDataSummaries: ${error.getMessage}")
+      cachedResponse match {
+        case Some(cachedFuture) =>
+          // Use cached Future[Seq[Document]]
+
+          cachedFuture.onComplete {
+            case Success(resultList) =>
+              senderRef ! resultList
+              log.info("Cache hit: Found cached data")
+            case Failure(error) =>
+              log.error(s"Cache hit: Cached Future[Seq[Document]] failed: ${error.getMessage}")
+          }
+
+        case None =>
+          // Cache was not found
+          log.info("Cache miss: Calculating and caching data")
+
+          val collection = getCollection("thermometerActions")
+          val findFuture: Future[Seq[Document]] = MongoUtils.findSummaries(collection)
+
+          findFuture.onComplete {
+            case Success(resultList) =>
+              senderRef ! resultList
+
+              lfuCache.put(cacheKey, findFuture)
+              log.info(s"Found ${resultList.size} actions summarized")
+            case Failure(error) =>
+              log.error(s"Error occurred during FindDataSummaries: ${error.getMessage}")
+          }
       }
   }
 }
