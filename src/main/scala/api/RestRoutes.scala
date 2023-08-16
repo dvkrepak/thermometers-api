@@ -9,6 +9,7 @@ import org.mongodb.scala.bson.{BsonObjectId, Document}
 import org.mongodb.scala.result.UpdateResult
 import play.api.libs.json.Json
 import simulators.Thermometer
+import utils.RouteUtils
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
@@ -25,14 +26,7 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
       pathEndOrSingleSlash {
         val futureResponse = getThermometers.mapTo[Seq[Document]]
 
-        onComplete(futureResponse) {
-          case Success(data) =>
-            val jsonData = data.map(_.toJson)
-            val jsonResponse = "[" + jsonData.mkString(",") + "]"
-            complete(HttpEntity(ContentTypes.`application/json`, jsonResponse))
-          case Failure(ex) =>
-            complete(HttpEntity(ContentTypes.`text/plain(UTF-8)`, s"Error: ${ex.getMessage}"))
-        }
+        handleBasicJsonResponse(futureResponse)
       }
     }
   }
@@ -103,24 +97,25 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
     }
   }
 
-  private val getDataSummarizedList: Route = pathPrefix(api / version / service / "data" / "list") {
+  private val getDataSummarizedList: Route = pathPrefix(api / version / service / "reports" / "list") {
     get {
-      // GET api/v1/thermometers/data/list
+      // GET api/v1/thermometers/reports/list
       pathEndOrSingleSlash {
-        val futureResponse: Future[Seq[Document]] = findDataSummarized()
+        val futureResponse: Future[Seq[Document]] = findReportSummarized()
 
         handleBasicJsonResponse(futureResponse)
       }
     }
   }
 
-  private val getDataWithRangeDetail: Route = pathPrefix(api / version / service / "data" / Segment) { thermometerId =>
+  private val getDataWithRangeDetail: Route = pathPrefix(api / version / service / "reports" / Segment) { thermometerId =>
     get {
-      // GET api/v1/thermometers/data/{_id: String}/?createdAtMin={Date}&createdAtMax={Date}
+      // GET api/v1/thermometers/reports/{_id: String}/?from={Date}&till={Date}
       pathEndOrSingleSlash {
-        parameters("createdAtMin".as[String], "createdAtMax".as[String]) { (createdAtMin, createdAtMax) =>
+        parameters("from".as[String], "till".as[String]) { (createdAtMin, createdAtMax) =>
 
-          lazy val lazyResponse: Future[Seq[Document]] = findDataWithRangeWithId(thermometerId, createdAtMin, createdAtMax)
+          lazy val lazyResponse: Future[Seq[Document]] =
+            findReportWithRangeWithId(thermometerId, createdAtMin, createdAtMax)
           val futureResponse = withValidation(lazyResponse).mapTo[Seq[Document]]
 
           handleBasicJsonResponse(futureResponse)
@@ -129,17 +124,44 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
     }
   }
 
-  private val getDataDetail: Route = pathPrefix(api / version / service / "data" / Segment) { thermometerId =>
+  private val getStatisticsDataList: Route = pathPrefix(api / version / service / "statistics") {
     get {
-      // GET api/v1/thermometers/data/{_id: String}
+      // GET api/v1/thermometers/statistics/?from={Date}&till={Date}&tmp_min={Boolean}
       pathEndOrSingleSlash {
-        lazy val lazyResponse: Future[Seq[Document]] = findDataWithId(thermometerId)
-        val futureResponse = withValidation(lazyResponse).mapTo[Seq[Document]]
+        parameters(
+          "from".as[String],
+          "till".as[String],
+          "tmp_min".as[Boolean].?,
+          "tmp_max".as[Boolean].?,
+          "tmp_avg".as[Boolean].?,
+          "tmp_med".as[Boolean].?
+        ) { (createdAtMin, createdAtMax, minimumOpt, maximumOpt, averageOpt, medianOpt) =>
 
-        handleBasicJsonResponse(futureResponse)
+          val operation: Option[RouteUtils.Operation] =
+            RouteUtils.convertToOperation(minimumOpt, maximumOpt, averageOpt, medianOpt)
+
+          operation match {
+            case Some(selectedOperation) =>
+
+              val functions: Seq[(String, String) => Future[Seq[Document]]] =
+                Seq(findMinimumFromReportsWithRange, findMaximumFromReportsWithRange,
+                  findAverageFromReportsWithRange)
+              val resolver = RouteUtils.buildOperationResolver(functions)
+              val function = RouteUtils.getStatisticFunction(selectedOperation, resolver)
+
+              lazy val lazyResponse: Future[Seq[Document]] = function(createdAtMin, createdAtMax)
+              val futureResponse = withValidation(lazyResponse).mapTo[Seq[Document]]
+              handleBasicJsonResponse(futureResponse)
+
+            case None =>
+              complete(StatusCodes.BadRequest,
+                "Exactly one operation from minimum/maximum/average/median must be selected.")
+            }
+          }
         }
       }
     }
+
 
   private def withValidation(futureResponse: => Future[Any]): Future[Any] = {
     Try(futureResponse) match {
@@ -153,7 +175,8 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
     onComplete(futureResponse) {
       case Success(data) =>
         val resultJson = data.map(_.toJson)
-        complete(HttpEntity(ContentTypes.`application/json`, resultJson.toString))
+        val jsonResponse = "[" + resultJson.mkString(",") + "]"
+        complete(HttpEntity(ContentTypes.`application/json`, jsonResponse))
       case Failure(ex) =>
         complete(HttpEntity(ContentTypes.`text/plain(UTF-8)`, s"Error: ${ex.getMessage}"))
     }
@@ -168,7 +191,12 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
     }
   }
 
-  val route: Route = getThermometersList ~ getThermometerDetail ~ createThermometer ~
-    updateThermometer ~ deleteThermometer ~ getDataSummarizedList ~
-    getDataWithRangeDetail ~ getDataDetail
+  val route: Route =
+    getStatisticsDataList ~
+    getDataSummarizedList ~
+    getDataWithRangeDetail ~
+    getThermometersList ~ getThermometerDetail ~ createThermometer ~
+    updateThermometer ~ deleteThermometer
+
+
 }

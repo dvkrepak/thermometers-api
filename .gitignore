@@ -54,3 +54,4 @@ project/**/metals.sbt
 
 .bsp
 .DS_Store
+qodana.yaml

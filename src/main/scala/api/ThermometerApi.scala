@@ -23,6 +23,16 @@ trait ThermometerApi {
     }
   }
 
+  private def validateDates(createdAtMin: String, createdAtMax: String): Unit = {
+    val correctDates = Validators.requireCorrectDateFormat(createdAtMin) &&
+      Validators.requireCorrectDateFormat(createdAtMax)
+
+    if (!correctDates) {
+      throw new IllegalArgumentException(
+        "createdAtMin and createdAtMax must be in the format 'yyyy-MM-dd'T'HH:mm:ss.SSSZ'")
+    }
+  }
+
   protected def getThermometers: Future[Seq[Document]] = {
     (mongoActor ? FindAllThermometers).mapTo[Seq[Document]]
   }
@@ -49,33 +59,38 @@ trait ThermometerApi {
     (mongoActor ? DeleteThermometer(_id)).mapTo[Long]
   }
 
-  protected def createData(json: String): Future[BsonObjectId] = {
-    (mongoActor ? CreateData(json)).mapTo[BsonObjectId]
+  protected def createReport(json: String): Future[BsonObjectId] = {
+    (mongoActor ? CreateReport(json)).mapTo[BsonObjectId]
   }
 
-  protected def findDataWithRangeWithId(thermometerId: String,
+  protected def findReportWithRangeWithId(thermometerId: String,
                                         createdAtMin: String,
                                         createdAtMax: String): Future[Seq[Document]] = {
     validateId(thermometerId, "thermometerId")
+    validateDates(createdAtMin, createdAtMax)
 
-    val correctDates = Validators.requireCorrectDateFormat(createdAtMax) &&
-      Validators.requireCorrectDateFormat(createdAtMax)
-
-    if (!correctDates) {
-       throw new IllegalArgumentException(
-         "createdAtMin and createdAtMax must be in the format 'yyyy-MM-dd'T'HH:mm:ss.SSSZ'")
-    }
-
-    (mongoActor ? FindDataWithRangeWithId(thermometerId, createdAtMin, createdAtMax)).mapTo[Seq[Document]]
+    (mongoActor ? FindReportWithRangeWithId(thermometerId, createdAtMin, createdAtMax)).mapTo[Seq[Document]]
   }
 
-  protected def findDataWithId(thermometerId: String): Future[Seq[Document]] = {
-    validateId(thermometerId, "thermometerId")
-
-    (mongoActor ? FindDataWithId(thermometerId)).mapTo[Seq[Document]]
+  protected def findReportSummarized(): Future[Seq[Document]] = {
+    (mongoActor ? FindReportsSummarized).mapTo[Seq[Document]]
   }
 
-  protected def findDataSummarized(): Future[Seq[Document]] = {
-    (mongoActor ? FindDataSummarized).mapTo[Seq[Document]]
+  protected def findMinimumFromReportsWithRange(createdAtMin: String, createdAtMax: String): Future[Seq[Document]] = {
+    validateDates(createdAtMin, createdAtMax)
+
+    (mongoActor ? FindMinimumFromReportsWithRange(createdAtMin, createdAtMax)).mapTo[Seq[Document]]
+  }
+
+  protected def findMaximumFromReportsWithRange(createdAtMin: String, createdAtMax: String): Future[Seq[Document]] = {
+    validateDates(createdAtMin, createdAtMax)
+
+    (mongoActor ? FindMaximumFromReportsWithRange(createdAtMin, createdAtMax)).mapTo[Seq[Document]]
+  }
+
+  protected def findAverageFromReportsWithRange(createdAtMin: String, createdAtMax: String): Future[Seq[Document]] = {
+    validateDates(createdAtMin, createdAtMax)
+
+    (mongoActor ? FindAverageFromReportsWithRange(createdAtMin, createdAtMax)).mapTo[Seq[Document]]
   }
 }

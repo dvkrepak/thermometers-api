@@ -110,7 +110,7 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
           log.error(s"Error occurred during DeleteThermometer: ${error.getMessage}")
       }
 
-    case CreateData(thermometerAction: String) =>
+    case CreateReport(thermometerAction: String) =>
 
       val collection = getCollection("thermometerActions")
       val insertFuture = MongoUtils.createCollectionObject(collection, thermometerAction)
@@ -122,7 +122,7 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
           log.error(s"Error occurred during CreateData: ${error.getMessage}")
       }
 
-    case FindDataWithRangeWithId(_id: String, createdAtMin: String, createdAtMax: String) =>
+    case FindReportWithRangeWithId(_id: String, createdAtMin: String, createdAtMax: String) =>
       val senderRef: ActorRef = sender()
 
       val collection = getCollection("thermometerActions")
@@ -137,7 +137,7 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
           log.error(s"Error occurred during FindDataWithRangeWithId: ${error.getMessage}")
       }
 
-    case FindDataWithId(thermometerId: String) =>
+    case FindReportWithId(thermometerId: String) =>
       val senderRef: ActorRef = sender()
 
       val collection = getCollection("thermometerActions")
@@ -152,10 +152,10 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
           log.error(s"Error occurred during FindDataWithId: ${error.getMessage}")
       }
 
-    case FindDataSummarized =>
+    case FindReportsSummarized =>
       val senderRef: ActorRef = sender()
 
-      val cacheKey = Uri("api/version/service/data/list")
+      val cacheKey = Uri("api/version/service/reports/list")
       val cachedResponse: Option[Future[Seq[Document]]] = lfuCache.get(cacheKey)
 
       cachedResponse match {
@@ -187,5 +187,38 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
               log.error(s"Error occurred during FindDataSummaries: ${error.getMessage}")
           }
       }
+    case FindMinimumFromReportsWithRange(createdAtMin: String, createdAtMax: String) =>
+      findGeneralReportStatistics(sender(), createdAtMin, createdAtMax,
+        MongoUtils.findMinimumDataWithRange,
+        "minimum", "FindMinimumFromReportsWithRange")
+
+    case FindMaximumFromReportsWithRange(createdAtMin: String, createdAtMax: String) =>
+      findGeneralReportStatistics(sender(), createdAtMin, createdAtMax,
+        MongoUtils.findMaximumFromReportsWithRange,
+        "maximum", "FindMaximumFromReportsWithRange")
+
+    case FindAverageFromReportsWithRange(createdAtMin: String, createdAtMax: String) =>
+      findGeneralReportStatistics(sender(), createdAtMin, createdAtMax,
+        MongoUtils.findAverageFromReportsWithRange,
+        "average", "FindAverageFromReportsWithRange")
+  }
+
+  private def findGeneralReportStatistics(senderRef: ActorRef,
+                                   createdAtMin: String,
+                                   createdAtMax: String,
+                                   dataFunctionProvider: (MongoCollection[Document], String, String) => Future[Seq[Document]],
+                                   functionName: String,
+                                   errorName: String): Unit = {
+    val collection = getCollection("thermometerActions")
+    val findFuture = dataFunctionProvider(collection, createdAtMin, createdAtMax)
+
+    findFuture.onComplete {
+      case Success(result) =>
+        val resultList = result.toList
+        senderRef ! resultList
+        log.info(s"Found ${resultList.size} Thermometer reports with date filters grouped by $functionName temperature")
+      case Failure(error) =>
+        log.error(s"Error occurred during $errorName: ${error.getMessage}")
+    }
   }
 }

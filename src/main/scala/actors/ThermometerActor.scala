@@ -17,7 +17,7 @@ case class ThermometerActor(timeout: Timeout) extends Actor with ThermometerApi 
 
   override def receive: Receive = {
     case action: ThermometerAction =>
-      createData(Json.toJson(action).toString())
+      createReport(Json.toJson(action).toString())
     case unexpectedMsg => log.error(s"ThermometerActor received an unexpected message: $unexpectedMsg")
   }
 }

@@ -7,6 +7,7 @@ import org.mongodb.scala.result.{DeleteResult, InsertOneResult, UpdateResult}
 
 import scala.concurrent.Future
 
+
 object MongoUtils {
 
   private def findCollectionObjectsWithFilter(collection: MongoCollection[Document],
@@ -15,7 +16,7 @@ object MongoUtils {
   }
 
   private def findCollectionObjectsWithAggregation(collection: MongoCollection[Document],
-                                                    aggregation: Seq[Bson]) = {
+                                                    aggregation: Seq[Bson]): Future[Seq[Document]] = {
     collection.aggregate(aggregation).toFuture()
   }
 
@@ -70,4 +71,29 @@ object MongoUtils {
     val aggregation = MongoAggregations.summaryAggregation
     findCollectionObjectsWithAggregation(collection, aggregation)
   }
+
+  def findMinimumDataWithRange(collection: MongoCollection[Document],
+                               createdAtMin: String,
+                               createdAtMax: String): Future[Seq[Document]] = {
+    val filter = MongoFilters.dateRangeFilter(createdAtMin, createdAtMax)
+    val aggregation = MongoAggregations.minimumDataWithRange(filter)
+    findCollectionObjectsWithAggregation(collection, aggregation)
+  }
+
+  def findMaximumFromReportsWithRange(collection: MongoCollection[Document],
+                                      createdAtMin: String,
+                                      createdAtMax: String): Future[Seq[Document]] = {
+    val filter = MongoFilters.dateRangeFilter(createdAtMin, createdAtMax)
+    val aggregation = MongoAggregations.maximumDateWithRange(filter)
+    findCollectionObjectsWithAggregation(collection, aggregation)
+  }
+
+  def findAverageFromReportsWithRange(collection: MongoCollection[Document],
+                                      createdAtMin: String,
+                                      createdAtMax: String): Future[Seq[Document]] = {
+    val filter = MongoFilters.dateRangeFilter(createdAtMin, createdAtMax)
+    val aggregation = MongoAggregations.averageDateWithRange(filter)
+    findCollectionObjectsWithAggregation(collection, aggregation)
+  }
+
 }
