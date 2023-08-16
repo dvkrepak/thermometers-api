@@ -32,83 +32,50 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
 
   def receive: Receive = {
     case FindAllThermometers =>
-      val senderRef = sender()
 
       val collection = getCollection("thermometers")
       val findFuture = MongoUtils.findCollectionObjects(collection)
 
-      findFuture.onComplete {
-        case Success(documents) =>
-          val documentsList = documents.toList
-          senderRef ! documentsList
-          log.info(s"Found ${documentsList.size} documents")
-        case Failure(error) =>
-          senderRef ! Status.Failure(error)
-          log.error(s"Error occurred during FindAllThermometers: ${error.getMessage}")
-      }
+      handleBasicFindQueryResult(sender(), findFuture,
+        "Thermometers",
+        "Error occurred during FindAllThermometers")
 
     case FindThermometer(_id: String) =>
-      val senderRef: ActorRef = sender()
 
       val collection = getCollection("thermometers")
       val findFuture = MongoUtils.findCollectionObjectWithId(collection, _id)
 
-      findFuture.onComplete {
-        case Success(Some(result)) =>
-          senderRef ! Some(result)
-          log.info(s"FindOne Document: $result")
-        case Success(None) =>
-          senderRef ! None
-          log.info(s"FindOne did not find any documents for _id ${_id}")
-        case Failure(error) =>
-          senderRef ! Status.Failure(error)
-          log.error(s"Error occurred during FindThermometer: ${error.getMessage}")
-      }
+      handleBasicFindQueryResult(sender(), findFuture,
+        "FindOne Document",
+       "Error occurred during FindThermometer")
+
 
     case CreateThermometer(thermometer: String) =>
-      val senderRef = sender()
 
       val collection = getCollection("thermometers")
       val insertFuture = MongoUtils.createCollectionObject(collection, thermometer)
 
-      insertFuture.onComplete {
-        case Success(result) =>
-          senderRef ! result.getInsertedId
-          log.info(s"InsertedOne Document: ${result.getInsertedId}")
-        case Failure(error) =>
-          senderRef ! Status.Failure(error)
-          log.error(s"Error occurred during CreateThermometer: ${error.getMessage}")
-      }
+      handleBasicQuery(sender(), insertFuture,
+        "InsertedOne Document",
+        "Error occurred during CreateThermometer")
 
     case UpdateThermometer(_id: String, json: String) =>
-      val senderRef: ActorRef = sender()
 
       val collection = getCollection("thermometers")
       val updateFuture = MongoUtils.updateCollectionObject(collection, _id, json)
 
-      updateFuture.onComplete {
-        case Success(result) =>
-          senderRef ! result
-          log.info(s"UpdatedOne Document: $result")
-        case Failure(error) =>
-          senderRef ! Status.Failure(error)
-          log.error(s"Error occurred during UpdateThermometer: ${error.getMessage}")
-      }
+      handleBasicQuery(sender(), updateFuture,
+        "UpdatedOne Document",
+        "Error occurred during UpdateThermometer")
 
     case DeleteThermometer(_id: String) =>
-      val senderRef: ActorRef = sender()
 
       val collection = getCollection("thermometers")
       val deleteFuture = MongoUtils.deleteCollectionObject(collection, _id)
 
-      deleteFuture.onComplete {
-        case Success(result) =>
-          senderRef ! result.getDeletedCount
-          log.info(s"DeletedOne Document: ${result.getDeletedCount}")
-        case Failure(error) =>
-          senderRef ! Status.Failure(error)
-          log.error(s"Error occurred during DeleteThermometer: ${error.getMessage}")
-      }
+      handleBasicQuery(sender(), deleteFuture,
+      "DeletedOne Document",
+      "Error occurred during DeleteThermometer")
 
     case CreateReport(thermometerAction: String) =>
 
@@ -123,34 +90,22 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
       }
 
     case FindReportWithRangeWithId(_id: String, createdAtMin: String, createdAtMax: String) =>
-      val senderRef: ActorRef = sender()
 
       val collection = getCollection("thermometerActions")
       val findFuture = MongoUtils.findWithDateRangeWithThermometerId(collection, _id, createdAtMin, createdAtMax)
 
-      findFuture.onComplete {
-        case Success(result) =>
-          val resultList = result.toList
-          senderRef ! resultList
-          log.info(s"Found ${resultList.size} Thermometer Actions with date filters")
-        case Failure(error) =>
-          log.error(s"Error occurred during FindDataWithRangeWithId: ${error.getMessage}")
-      }
+      handleBasicFindQueryResult(sender(), findFuture,
+        "Thermometer Actions with date filters",
+        "Error occurred during FindReportWithRangeWithId")
 
     case FindReportWithId(thermometerId: String) =>
-      val senderRef: ActorRef = sender()
 
       val collection = getCollection("thermometerActions")
       val findFuture = MongoUtils.findWithThermometerId(collection, thermometerId)
 
-      findFuture.onComplete {
-        case Success(result) =>
-          val resultList = result.toList
-          senderRef ! resultList
-          log.info(s"Found ${resultList.size} Thermometer Actions without date filters")
-        case Failure(error) =>
-          log.error(s"Error occurred during FindDataWithId: ${error.getMessage}")
-      }
+      handleBasicFindQueryResult(sender(), findFuture,
+      "Thermometer Actions without date filters",
+      "Error occurred during FindReportWithId")
 
     case FindReportsSummarized =>
       val senderRef: ActorRef = sender()
@@ -202,23 +157,51 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
         MongoUtils.findAverageFromReportsWithRange,
         "average", "FindAverageFromReportsWithRange")
   }
+  private def handleBasicQuery(senderRef: ActorRef,
+                               futureResult: Future[Any],
+                               logMsg: String,
+                               errorMsg: String): Unit = {
+    futureResult.onComplete {
+      case Success(result) =>
+        senderRef ! result
+        log.info(s"$logMsg: $result")
+      case Failure(error) =>
+        senderRef ! Status.Failure(error)
+        log.error(s"$errorMsg: ${error.getMessage}")
+    }
+  }
+  private def handleBasicFindQueryResult(senderRef: ActorRef,
+                                findFuture: Future[Seq[Document]],
+                                logMsg: String,
+                                errorMsg: String): Unit = {
+    findFuture.onComplete {
+      case Success(result) =>
+        val resultList = result.toList
+        senderRef ! resultList
+        log.info(s"Found ${resultList.size} $logMsg")
+      case Failure(error) =>
+        senderRef ! Status.Failure(error)
+        log.error(s"$errorMsg: ${error.getMessage}")
+    }
+  }
 
   private def findGeneralReportStatistics(senderRef: ActorRef,
                                    createdAtMin: String,
                                    createdAtMax: String,
-                                   dataFunctionProvider: (MongoCollection[Document], String, String) => Future[Seq[Document]],
-                                   functionName: String,
-                                   errorName: String): Unit = {
+                                   queryFunction: (MongoCollection[Document], String, String) => Future[Seq[Document]],
+                                   logMsg: String,
+                                   errorMsg: String): Unit = {
     val collection = getCollection("thermometerActions")
-    val findFuture = dataFunctionProvider(collection, createdAtMin, createdAtMax)
+    val findFuture = queryFunction(collection, createdAtMin, createdAtMax)
 
     findFuture.onComplete {
       case Success(result) =>
         val resultList = result.toList
         senderRef ! resultList
-        log.info(s"Found ${resultList.size} Thermometer reports with date filters grouped by $functionName temperature")
+        log.info(s"Found ${resultList.size} Thermometer reports with date filters grouped by $logMsg temperature")
       case Failure(error) =>
-        log.error(s"Error occurred during $errorName: ${error.getMessage}")
+        senderRef ! Status.Failure(error)
+        log.error(s"Error occurred during $errorMsg: ${error.getMessage}")
     }
   }
 }

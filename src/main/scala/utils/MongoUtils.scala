@@ -24,11 +24,9 @@ object MongoUtils {
     collection.find().toFuture()
   }
 
-  def findCollectionObjectWithId(collection: MongoCollection[Document], _id: String): Future[Option[Document]] = {
+  def findCollectionObjectWithId(collection: MongoCollection[Document], _id: String): Future[Seq[Document]] = {
     val filter = MongoFilters.idFilter(_id)
-    collection
-      .find(filter)
-      .headOption()
+    findCollectionObjectsWithFilter(collection, filter)
   }
 
   def deleteCollectionObject(collection: MongoCollection[Document], _id: String): Future[DeleteResult] = {

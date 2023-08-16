@@ -47,10 +47,10 @@ trait ThermometerApi {
     (mongoActor ? UpdateThermometer(thermometerId, json)).mapTo[UpdateResult]
   }
 
-  protected def findThermometer(_id: String): Future[Option[Document]] = {
+  protected def findThermometer(_id: String): Future[Seq[Document]] = {
     validateId(_id, "_id")
 
-    (mongoActor ? FindThermometer(_id)).mapTo[Option[Document]]
+    (mongoActor ? FindThermometer(_id)).mapTo[Seq[Document]]
   }
 
   protected def deleteThermometer(_id: String): Future[Long] = {

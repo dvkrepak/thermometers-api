@@ -35,16 +35,10 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
     get {
       // GET api/v1/thermometers/{_id: String}
       pathEndOrSingleSlash {
-        lazy val lazyResponse: Future[Option[Document]] = findThermometer(_id)
-        val futureResponse = withValidation(lazyResponse).mapTo[Option[Document]]
+        lazy val lazyResponse: Future[Seq[Document]] = findThermometer(_id)
+        val futureResponse = withValidation(lazyResponse).mapTo[Seq[Document]]
 
-        onComplete(futureResponse) {
-          case Success(data) =>
-            val resultJson = data.map(_.toJson).getOrElse(Json.toJson(None))
-            complete(HttpEntity(ContentTypes.`application/json`, resultJson.toString))
-          case Failure(ex) =>
-            complete(HttpEntity(ContentTypes.`text/plain(UTF-8)`, s"Error: ${ex.getMessage}"))
-        }
+        handleBasicJsonResponse(futureResponse)
       }
     }
   }
