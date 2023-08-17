@@ -93,4 +93,10 @@ trait ThermometerApi {
 
     (mongoActor ? FindAverageFromReportsWithRange(createdAtMin, createdAtMax)).mapTo[Seq[Document]]
   }
+
+  protected def findMedianFromReportsWithRange(createdAtMin: String, createdAtMax: String): Future[Seq[Document]] = {
+    validateDates(createdAtMin, createdAtMax)
+
+    (mongoActor ? FindMedianFromReportsWithRange(createdAtMin, createdAtMax)).mapTo[Seq[Document]]
+  }
 }

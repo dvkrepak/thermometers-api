@@ -138,8 +138,10 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
             case Some(selectedOperation) =>
 
               val functions: Seq[(String, String) => Future[Seq[Document]]] =
+
                 Seq(findMinimumFromReportsWithRange, findMaximumFromReportsWithRange,
-                  findAverageFromReportsWithRange)
+                  findAverageFromReportsWithRange, findMedianFromReportsWithRange)
+
               val resolver = RouteUtils.buildOperationResolver(functions)
               val function = RouteUtils.getStatisticFunction(selectedOperation, resolver)
 
@@ -172,7 +174,8 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
         val jsonResponse = "[" + resultJson.mkString(",") + "]"
         complete(HttpEntity(ContentTypes.`application/json`, jsonResponse))
       case Failure(ex) =>
-        complete(HttpEntity(ContentTypes.`text/plain(UTF-8)`, s"Error: ${ex.getMessage}"))
+        val errorMessage = s"Error: ${ex.getMessage}"
+        complete(StatusCodes.InternalServerError, HttpEntity(ContentTypes.`text/plain(UTF-8)`, errorMessage))
     }
   }
 
@@ -191,6 +194,4 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
     getDataWithRangeDetail ~
     getThermometersList ~ getThermometerDetail ~ createThermometer ~
     updateThermometer ~ deleteThermometer
-
-
 }

@@ -40,7 +40,7 @@ object MongoUtils {
     val doc = Document(obj)
     collection
       .insertOne(doc)
-      .head()
+      .toFuture()
   }
 
   def updateCollectionObject(collection: MongoCollection[Document], _id: String, data: String): Future[UpdateResult] = {
@@ -56,17 +56,20 @@ object MongoUtils {
                                           createdAtMin: String,
                                           createdAtMax: String): Future[Seq[Document]] = {
     val filter = MongoFilters.thermometerIdWithDateRangeFilter(_id, createdAtMin, createdAtMax)
+
     findCollectionObjectsWithFilter(collection, filter)
   }
 
   def findWithThermometerId(collection: MongoCollection[Document],
                             thermometerId: String): Future[Seq[Document]] = {
     val filter = MongoFilters.thermometerIdFilter(thermometerId)
+
     findCollectionObjectsWithFilter(collection, filter)
   }
 
   def findSummaries(collection: MongoCollection[Document]): Future[Seq[Document]] = {
     val aggregation = MongoAggregations.summaryAggregation
+
     findCollectionObjectsWithAggregation(collection, aggregation)
   }
 
@@ -75,6 +78,7 @@ object MongoUtils {
                                createdAtMax: String): Future[Seq[Document]] = {
     val filter = MongoFilters.dateRangeFilter(createdAtMin, createdAtMax)
     val aggregation = MongoAggregations.minimumDataWithRange(filter)
+
     findCollectionObjectsWithAggregation(collection, aggregation)
   }
 
@@ -83,6 +87,7 @@ object MongoUtils {
                                       createdAtMax: String): Future[Seq[Document]] = {
     val filter = MongoFilters.dateRangeFilter(createdAtMin, createdAtMax)
     val aggregation = MongoAggregations.maximumDateWithRange(filter)
+
     findCollectionObjectsWithAggregation(collection, aggregation)
   }
 
@@ -91,6 +96,16 @@ object MongoUtils {
                                       createdAtMax: String): Future[Seq[Document]] = {
     val filter = MongoFilters.dateRangeFilter(createdAtMin, createdAtMax)
     val aggregation = MongoAggregations.averageDateWithRange(filter)
+
+    findCollectionObjectsWithAggregation(collection, aggregation)
+  }
+
+  def findMedianFromReportsWithRange(collection: MongoCollection[Document],
+                                     createdAtMin: String,
+                                     createdAtMax: String): Future[Seq[Document]] = {
+    val filter = MongoFilters.dateRangeFilter(createdAtMin, createdAtMax)
+    val aggregation = MongoAggregations.medianDateWithRange(filter)
+
     findCollectionObjectsWithAggregation(collection, aggregation)
   }
 

@@ -156,6 +156,11 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
       findGeneralReportStatistics(sender(), createdAtMin, createdAtMax,
         MongoUtils.findAverageFromReportsWithRange,
         "average", "FindAverageFromReportsWithRange")
+
+    case FindMedianFromReportsWithRange(createdAtMin: String, createdAtMax: String) =>
+      findGeneralReportStatistics(sender(), createdAtMin, createdAtMax,
+        MongoUtils.findMedianFromReportsWithRange,
+      "median", "FindMedianFromReportsWithRange")
   }
   private def handleBasicQuery(senderRef: ActorRef,
                                futureResult: Future[Any],

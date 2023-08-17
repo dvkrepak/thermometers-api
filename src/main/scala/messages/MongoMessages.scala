@@ -1,8 +1,5 @@
 package messages
 
-import org.mongodb.scala.bson.ObjectId
-
-import java.util.Date
 import simulators.Thermometer
 
 object MongoMessages {
@@ -20,11 +17,11 @@ object MongoMessages {
   case class FindReportWithId(thermometerId: String)
   object FindReportsSummarized
 
-  // Operations with statistics
+  // Statistic operations
   case class FindMinimumFromReportsWithRange(createdAtMin: String, createdAtMax: String)
   case class FindMaximumFromReportsWithRange(createdAtMin: String, createdAtMax: String)
   case class FindAverageFromReportsWithRange(createdAtMin: String, createdAtMax: String)
-//  case class FindMedianFromReportsWithRange(createdAtMin: String, createdAtMax: String)
+  case class FindMedianFromReportsWithRange(createdAtMin: String, createdAtMax: String)
 
   // Thermometer helper messages
   case class ThermometerEditor(thermometerId: String, data: Thermometer)
