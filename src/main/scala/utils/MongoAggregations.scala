@@ -10,6 +10,7 @@ import org.mongodb.scala.model.Aggregates.project
 import org.mongodb.scala.model.Projections.{computed, excludeId, fields, include}
 import org.mongodb.scala.model.{Aggregates, BsonField}
 
+
 object MongoAggregations {
 
   val summaryAggregation: Seq[Bson] = List(
@@ -48,9 +49,21 @@ object MongoAggregations {
   }
 
   def averageDateWithRange(dateFilter: Bson): Seq[Bson] = {
-    val accumulator = Accumulators.avg("avgTemperature", "$temperature")
 
-    accumulatorWithDateRange(dateFilter, accumulator, "avgTemperature")
+    val accumulator = Seq(
+      Aggregates.filter(dateFilter),
+      group("$thermometerId", Accumulators.avg("avgTemperature", "$temperature")),
+      // Round the average to 4 decimal places
+      project(
+        fields(
+          excludeId(),
+          computed("thermometerId", "$_id"),
+          computed("avgTemperature", Document("$round" -> BsonArray("$avgTemperature", BsonInt32(4))))
+        )
+      )
+    )
+
+    accumulator
   }
 
   def medianDateWithRange(dateFilter: Bson): Seq[Bson] = {
