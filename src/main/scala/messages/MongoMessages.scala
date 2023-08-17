@@ -14,7 +14,6 @@ object MongoMessages {
   // Operation with reports
   case class CreateReport(json: String)
   case class FindReportWithRangeWithId(thermometerId: String, createdAtMin: String, createdAtMax: String)
-  case class FindReportWithId(thermometerId: String)
   object FindReportsSummarized
 
   // Statistic operations

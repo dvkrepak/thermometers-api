@@ -18,6 +18,14 @@ object MongoAggregations {
     group("$thermometerId",
       first("lastTemperature", "$temperature"),
       first("lastEventTime", "$created_at")
+    ),
+      project(
+      fields(
+        excludeId(),
+        computed("thermometerId", "$_id"),
+        include("lastTemperature"),
+        include("lastEventTime")
+      )
     )
   )
 

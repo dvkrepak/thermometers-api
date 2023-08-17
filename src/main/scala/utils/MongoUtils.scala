@@ -60,14 +60,7 @@ object MongoUtils {
     findCollectionObjectsWithFilter(collection, filter)
   }
 
-  def findWithThermometerId(collection: MongoCollection[Document],
-                            thermometerId: String): Future[Seq[Document]] = {
-    val filter = MongoFilters.thermometerIdFilter(thermometerId)
-
-    findCollectionObjectsWithFilter(collection, filter)
-  }
-
-  def findSummaries(collection: MongoCollection[Document]): Future[Seq[Document]] = {
+  def findSummarized(collection: MongoCollection[Document]): Future[Seq[Document]] = {
     val aggregation = MongoAggregations.summaryAggregation
 
     findCollectionObjectsWithAggregation(collection, aggregation)

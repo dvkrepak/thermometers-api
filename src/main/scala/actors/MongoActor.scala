@@ -98,15 +98,6 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
         "Thermometer Actions with date filters",
         "Error occurred during FindReportWithRangeWithId")
 
-    case FindReportWithId(thermometerId: String) =>
-
-      val collection = getCollection("thermometerActions")
-      val findFuture = MongoUtils.findWithThermometerId(collection, thermometerId)
-
-      handleBasicFindQueryResult(sender(), findFuture,
-      "Thermometer Actions without date filters",
-      "Error occurred during FindReportWithId")
-
     case FindReportsSummarized =>
       val senderRef: ActorRef = sender()
 
@@ -130,7 +121,7 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
           log.info("Cache miss: Calculating and caching data")
 
           val collection = getCollection("thermometerActions")
-          val findFuture: Future[Seq[Document]] = MongoUtils.findSummaries(collection)
+          val findFuture: Future[Seq[Document]] = MongoUtils.findSummarized(collection)
 
           findFuture.onComplete {
             case Success(resultList) =>
