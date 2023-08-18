@@ -33,8 +33,8 @@ trait ThermometerApi {
     }
   }
 
-  protected def getThermometers: Future[Seq[Document]] = {
-    (mongoActor ? FindAllThermometers).mapTo[Seq[Document]]
+  protected def findThermometersWithPagination(page: Int, pageSize: Int): Future[Seq[Document]] = {
+    (mongoActor ? FindThermometersWithPagination(page, pageSize)).mapTo[Seq[Document]]
   }
 
   protected def createThermometer(jsonString: String): Future[InsertOneResult] = {
@@ -72,8 +72,8 @@ trait ThermometerApi {
     (mongoActor ? FindReportWithRangeWithId(thermometerId, createdAtMin, createdAtMax)).mapTo[Seq[Document]]
   }
 
-  protected def findReportSummarized(): Future[Seq[Document]] = {
-    (mongoActor ? FindReportsSummarized).mapTo[Seq[Document]]
+  protected def findReportSummarizedWithPagination(page: Int, pageSize: Int): Future[Seq[Document]] = {
+    (mongoActor ? FindReportSummarizedWithPagination(page, pageSize)).mapTo[Seq[Document]]
   }
 
   protected def findMinimumFromReportsWithRange(createdAtMin: String, createdAtMax: String): Future[Seq[Document]] = {

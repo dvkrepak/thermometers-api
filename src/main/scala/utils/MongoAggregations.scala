@@ -2,7 +2,7 @@ package utils
 
 import com.mongodb.client.model.Accumulators
 import com.mongodb.client.model.Accumulators.first
-import com.mongodb.client.model.Aggregates.{group, sort}
+import com.mongodb.client.model.Aggregates.{group, limit, skip, sort}
 import com.mongodb.client.model.Indexes.{ascending, descending}
 import org.bson.conversions.Bson
 import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonInt32, Document}
@@ -13,7 +13,7 @@ import org.mongodb.scala.model.{Aggregates, BsonField}
 
 object MongoAggregations {
 
-  val summaryAggregation: Seq[Bson] = List(
+  private val summaryAggregation: Seq[Bson] = List(
     sort(descending("created_at")),
     group("$thermometerId",
       first("lastTemperature", "$temperature"),
@@ -28,6 +28,15 @@ object MongoAggregations {
       )
     )
   )
+
+  def summaryAggregationWithPagination(page: Int, pageSize: Int): Seq[Bson] = {
+    val paginationStages = List(
+      skip((page - 1) * pageSize),
+      limit(pageSize)
+    )
+
+    summaryAggregation ++ paginationStages
+  }
 
   private def accumulatorWithDateRange(dateFilter: Bson, accumulator: BsonField,
                                        accumulatorName: String): Seq[Bson] = {

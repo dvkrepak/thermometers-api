@@ -5,7 +5,7 @@ import simulators.Thermometer
 object MongoMessages {
 
   // Operations with Thermometer(-s)
-  case object FindAllThermometers
+  case class FindThermometersWithPagination(page: Int, pageSize: Int)
   case class CreateThermometer(json: String)
   case class UpdateThermometer(_id: String, json: String)
   case class FindThermometer(_id: String)
@@ -14,7 +14,7 @@ object MongoMessages {
   // Operation with reports
   case class CreateReport(json: String)
   case class FindReportWithRangeWithId(thermometerId: String, createdAtMin: String, createdAtMax: String)
-  object FindReportsSummarized
+  case class FindReportSummarizedWithPagination(page: Int, pageSize: Int)
 
   // Statistic operations
   case class FindMinimumFromReportsWithRange(createdAtMin: String, createdAtMax: String)

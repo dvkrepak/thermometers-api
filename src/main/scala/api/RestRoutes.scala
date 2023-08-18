@@ -7,7 +7,7 @@ import marshallers.ThermometerMarshaller
 import messages.MongoMessages.ThermometerEditor
 import org.mongodb.scala.bson.Document
 import org.mongodb.scala.result.{DeleteResult, InsertOneResult, UpdateResult}
-import play.api.libs.json.Json
+import play.api.libs.json.{JsArray, Json}
 import simulators.Thermometer
 import utils.RouteUtils
 
@@ -24,9 +24,12 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
     get {
       // GET api/v1/thermometers/list
       pathEndOrSingleSlash {
-        val futureResponse = getThermometers.mapTo[Seq[Document]]
+        parameters("page".as[Int].?(1), "page_size".as[Int].?(10)) { (page, pageSize) =>
 
-        handleBasicJsonResponse(futureResponse)
+          val futureResponse: Future[Seq[Document]] = findThermometersWithPagination(page, pageSize)
+
+          handleBasicJsonPaginationResponse(futureResponse, page, pageSize)
+        }
       }
     }
   }
@@ -95,9 +98,12 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
     get {
       // GET api/v1/thermometers/reports/list
       pathEndOrSingleSlash {
-        val futureResponse: Future[Seq[Document]] = findReportSummarized()
+        parameters("page".as[Int].?(1), "page_size".as[Int].?(10)) { (page, pageSize) =>
 
-        handleBasicJsonResponse(futureResponse)
+          val futureResponse: Future[Seq[Document]] = findReportSummarizedWithPagination(page, pageSize)
+
+          handleBasicJsonPaginationResponse(futureResponse, page, pageSize)
+        }
       }
     }
   }
@@ -185,6 +191,32 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
         complete(StatusCodes.OK, data.toString)
       case Failure(ex) =>
         complete(StatusCodes.BadRequest, s"Error: ${ex.getMessage}")
+    }
+  }
+
+  private def handleBasicJsonPaginationResponse(futureResponse: Future[Seq[Document]],
+                                                page: Int,
+                                                pageSize: Int): RequestContext => Future[RouteResult] = {
+    onComplete(futureResponse) {
+      case Success(data) =>
+        if (data.isEmpty) {
+          complete(StatusCodes.NoContent, HttpEntity(ContentTypes.`text/plain(UTF-8)`, "No content to display"))
+        } else {
+          val resultJsonArray = data.map(_.toJson).mkString("[", ",", "]")
+          val parsedArray = Json.parse(resultJsonArray).as[JsArray]
+
+          val jsonData = Json.obj(
+            "results" -> parsedArray,
+            "page" -> Json.toJson(page),
+            "page_size" -> Json.toJson(pageSize),
+          )
+
+          complete(HttpEntity(ContentTypes.`application/json`, Json.stringify(jsonData)))
+        }
+
+      case Failure(ex) =>
+        val errorMessage = s"Error: ${ex.getMessage}"
+        complete(StatusCodes.InternalServerError, HttpEntity(ContentTypes.`text/plain(UTF-8)`, errorMessage))
     }
   }
 

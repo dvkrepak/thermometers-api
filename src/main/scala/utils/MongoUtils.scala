@@ -1,11 +1,13 @@
 package utils
 
+import akka.http.scaladsl.server.Directives.onComplete
 import org.bson.conversions.Bson
 import org.mongodb.scala.MongoCollection
 import org.mongodb.scala.bson.Document
 import org.mongodb.scala.result.{DeleteResult, InsertOneResult, UpdateResult}
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Success
 
 
 object MongoUtils {
@@ -22,6 +24,14 @@ object MongoUtils {
 
   def findCollectionObjects(collection: MongoCollection[Document]): Future[Seq[Document]] = {
     collection.find().toFuture()
+  }
+
+  def findCollectionObjectsWithPagination(collection: MongoCollection[Document],
+                                          page: Int,
+                                          pageSize: Int): Future[Seq[Document]] = {
+    val offset = (page - 1) * pageSize
+
+    collection.find().skip(offset).limit(pageSize).toFuture()
   }
 
   def findCollectionObjectWithId(collection: MongoCollection[Document], _id: String): Future[Seq[Document]] = {
@@ -60,8 +70,10 @@ object MongoUtils {
     findCollectionObjectsWithFilter(collection, filter)
   }
 
-  def findSummarized(collection: MongoCollection[Document]): Future[Seq[Document]] = {
-    val aggregation = MongoAggregations.summaryAggregation
+  def findSummarizedWithPagination(collection: MongoCollection[Document],
+                                   page: Int,
+                                   pageSize: Int): Future[Seq[Document]] = {
+    val aggregation = MongoAggregations.summaryAggregationWithPagination(page, pageSize)
 
     findCollectionObjectsWithAggregation(collection, aggregation)
   }

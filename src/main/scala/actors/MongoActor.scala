@@ -31,10 +31,10 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
   }
 
   def receive: Receive = {
-    case FindAllThermometers =>
 
+    case FindThermometersWithPagination(page: Int, pageSize: Int) =>
       val collection = getCollection("thermometers")
-      val findFuture = MongoUtils.findCollectionObjects(collection)
+      val findFuture = MongoUtils.findCollectionObjectsWithPagination(collection, page, pageSize)
 
       handleBasicFindQueryResult(sender(), findFuture,
         "Thermometers",
@@ -98,10 +98,10 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
         "Thermometer Actions with date filters",
         "Error occurred during FindReportWithRangeWithId")
 
-    case FindReportsSummarized =>
+    case FindReportSummarizedWithPagination(page: Int, pageSize: Int) =>
       val senderRef: ActorRef = sender()
 
-      val cacheKey = Uri("api/version/service/reports/list")
+      val cacheKey = Uri(s"api/version/service/reports/list/?page=$page&page_size=$pageSize")
       val cachedResponse: Option[Future[Seq[Document]]] = lfuCache.get(cacheKey)
 
       cachedResponse match {
@@ -121,7 +121,7 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
           log.info("Cache miss: Calculating and caching data")
 
           val collection = getCollection("thermometerActions")
-          val findFuture: Future[Seq[Document]] = MongoUtils.findSummarized(collection)
+          val findFuture: Future[Seq[Document]] = MongoUtils.findSummarizedWithPagination(collection, page, pageSize)
 
           findFuture.onComplete {
             case Success(resultList) =>
@@ -152,6 +152,7 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
       findGeneralReportStatistics(sender(), createdAtMin, createdAtMax,
         MongoUtils.findMedianFromReportsWithRange,
       "median", "FindMedianFromReportsWithRange")
+
   }
   private def handleBasicQuery(senderRef: ActorRef,
                                futureResult: Future[Any],
