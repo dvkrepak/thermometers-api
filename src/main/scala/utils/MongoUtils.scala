@@ -1,16 +1,17 @@
 package utils
 
-import akka.http.scaladsl.server.Directives.onComplete
 import org.bson.conversions.Bson
 import org.mongodb.scala.MongoCollection
 import org.mongodb.scala.bson.Document
 import org.mongodb.scala.result.{DeleteResult, InsertOneResult, UpdateResult}
 
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.Success
+import scala.annotation.unused
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 
 object MongoUtils {
+
 
   private def findCollectionObjectsWithFilter(collection: MongoCollection[Document],
                                               filter: Bson): Future[Seq[Document]] = {
@@ -22,6 +23,7 @@ object MongoUtils {
     collection.aggregate(aggregation).toFuture()
   }
 
+  @unused
   def findCollectionObjects(collection: MongoCollection[Document]): Future[Seq[Document]] = {
     collection.find().toFuture()
   }
@@ -32,6 +34,10 @@ object MongoUtils {
     val offset = (page - 1) * pageSize
 
     collection.find().skip(offset).limit(pageSize).toFuture()
+  }
+
+  def countCollectionObjects(collection: MongoCollection[Document]): Future[Long] = {
+    collection.countDocuments().toFuture()
   }
 
   def findCollectionObjectWithId(collection: MongoCollection[Document], _id: String): Future[Seq[Document]] = {
@@ -76,6 +82,14 @@ object MongoUtils {
     val aggregation = MongoAggregations.summaryAggregationWithPagination(page, pageSize)
 
     findCollectionObjectsWithAggregation(collection, aggregation)
+  }
+
+  def countSummarizedReports(collection: MongoCollection[Document]): Future[Long] = {
+    // Count unique thermometerId values
+    val aggregation = MongoAggregations.thermometerIdGroup
+
+    findCollectionObjectsWithAggregation(collection, aggregation)
+      .map(_.length.asInstanceOf[Long])
   }
 
   def findMinimumDataWithRange(collection: MongoCollection[Document],

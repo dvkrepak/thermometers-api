@@ -39,6 +39,13 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
       handleBasicFindQueryResult(sender(), findFuture,
         "Thermometers",
         "Error occurred during FindAllThermometers")
+    case CountThermometers =>
+      val collection = getCollection("thermometers")
+      val countFuture: Future[Long] = MongoUtils.countCollectionObjects(collection)
+
+      handleBasicQuery(sender(), countFuture,
+        "Count Thermometers",
+        "Error occurred during CountThermometers")
 
     case FindThermometer(_id: String) =>
 
@@ -133,6 +140,14 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
               log.error(s"Error occurred during FindDataSummaries: ${error.getMessage}")
           }
       }
+    case CountSummarizedReports =>
+      val collection = getCollection("thermometerActions")
+      val countFuture: Future[Long] = MongoUtils.countSummarizedReports(collection)
+
+      handleBasicQuery(sender(), countFuture,
+        "Count Reports",
+        "Error occurred during CountReports")
+
     case FindMinimumFromReportsWithRange(createdAtMin: String, createdAtMax: String) =>
       findGeneralReportStatistics(sender(), createdAtMin, createdAtMax,
         MongoUtils.findMinimumDataWithRange,

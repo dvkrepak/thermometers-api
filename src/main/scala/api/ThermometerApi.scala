@@ -7,6 +7,7 @@ import messages.MongoMessages._
 import org.mongodb.scala.bson.{BsonObjectId, Document}
 import org.mongodb.scala.result.{DeleteResult, InsertOneResult, UpdateResult}
 
+import scala.annotation.unused
 import scala.concurrent.Future
 
 trait ThermometerApi {
@@ -35,6 +36,10 @@ trait ThermometerApi {
 
   protected def findThermometersWithPagination(page: Int, pageSize: Int): Future[Seq[Document]] = {
     (mongoActor ? FindThermometersWithPagination(page, pageSize)).mapTo[Seq[Document]]
+  }
+
+  def countThermometers(): Future[Long] = {
+    (mongoActor ? CountThermometers).mapTo[Long]
   }
 
   protected def createThermometer(jsonString: String): Future[InsertOneResult] = {
@@ -74,6 +79,10 @@ trait ThermometerApi {
 
   protected def findReportSummarizedWithPagination(page: Int, pageSize: Int): Future[Seq[Document]] = {
     (mongoActor ? FindReportSummarizedWithPagination(page, pageSize)).mapTo[Seq[Document]]
+  }
+
+  protected def countSummarizedReports(): Future[Long] = {
+    (mongoActor ? CountSummarizedReports).mapTo[Long]
   }
 
   protected def findMinimumFromReportsWithRange(createdAtMin: String, createdAtMax: String): Future[Seq[Document]] = {

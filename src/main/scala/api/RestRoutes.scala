@@ -27,12 +27,16 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
         parameters("page".as[Int].?(1), "page_size".as[Int].?(10)) { (page, pageSize) =>
 
           val futureResponse: Future[Seq[Document]] = findThermometersWithPagination(page, pageSize)
+          val countFuture: Future[Long] = countThermometers()
 
-          handleBasicJsonPaginationResponse(futureResponse, page, pageSize)
+          val combinedResponse = futureResponse.zip(countFuture)
+
+
+          handleBasicJsonPaginationResponse(combinedResponse, page, pageSize)
+          }
         }
       }
     }
-  }
 
   private val getThermometerDetail: Route = pathPrefix(api / version / service / Segment) { _id =>
     get {
@@ -101,8 +105,11 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
         parameters("page".as[Int].?(1), "page_size".as[Int].?(10)) { (page, pageSize) =>
 
           val futureResponse: Future[Seq[Document]] = findReportSummarizedWithPagination(page, pageSize)
+          val countFuture: Future[Long] = countSummarizedReports()
 
-          handleBasicJsonPaginationResponse(futureResponse, page, pageSize)
+          val combinedResponse = futureResponse.zip(countFuture)
+
+          handleBasicJsonPaginationResponse(combinedResponse, page, pageSize)
         }
       }
     }
@@ -194,21 +201,33 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
     }
   }
 
-  private def handleBasicJsonPaginationResponse(futureResponse: Future[Seq[Document]],
+  private def handleBasicJsonPaginationResponse(futureResponse: Future[(Seq[Document], Long)],
                                                 page: Int,
                                                 pageSize: Int): RequestContext => Future[RouteResult] = {
     onComplete(futureResponse) {
-      case Success(data) =>
+      case Success(response) =>
+
+        val data: Seq[Document] = response._1
+
         if (data.isEmpty) {
+          // If there is no data, return 204 No Content
           complete(StatusCodes.NoContent, HttpEntity(ContentTypes.`text/plain(UTF-8)`, "No content to display"))
         } else {
-          val resultJsonArray = data.map(_.toJson).mkString("[", ",", "]")
-          val parsedArray = Json.parse(resultJsonArray).as[JsArray]
+
+          val count: Long = response._2 // Count of all documents
+
+          val resultJsonArray: String = data.map(_.toJson).mkString("[", ",", "]") // Convert to JSON array
+          val parsedArray: JsArray = Json.parse(resultJsonArray).as[JsArray] // Parse JSON array
+
+          val totalPages: Int = Math.ceil(count.toDouble / pageSize.toDouble).toInt // Calculate total pages
+          val hasNextPage: Boolean = page < totalPages
 
           val jsonData = Json.obj(
+            "count" -> count,
             "results" -> parsedArray,
-            "page" -> Json.toJson(page),
-            "page_size" -> Json.toJson(pageSize),
+            "page" -> page,
+            "page_size" -> pageSize,
+            "next_page" -> hasNextPage,
           )
 
           complete(HttpEntity(ContentTypes.`application/json`, Json.stringify(jsonData)))

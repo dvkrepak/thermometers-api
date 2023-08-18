@@ -29,6 +29,10 @@ object MongoAggregations {
     )
   )
 
+  val thermometerIdGroup: Seq[Bson] = Seq(
+    group("$thermometerId"),
+  )
+
   def summaryAggregationWithPagination(page: Int, pageSize: Int): Seq[Bson] = {
     val paginationStages = List(
       skip((page - 1) * pageSize),
