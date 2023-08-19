@@ -7,9 +7,9 @@ object MongoMessages {
   // Operations with Thermometer(-s)
   case class FindThermometersWithPagination(page: Int, pageSize: Int)
   case class CreateThermometer(json: String)
-  case class UpdateThermometer(_id: String, json: String)
-  case class FindThermometer(_id: String)
-  case class DeleteThermometer(_id: String)
+  case class UpdateThermometer(id: String, json: String)
+  case class FindThermometer(id: String)
+  case class DeleteThermometer(id: String)
   case object CountThermometers
 
   // Operation with reports

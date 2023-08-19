@@ -7,8 +7,8 @@ import org.mongodb.scala.model.Filters.{and, equal, gte, lte}
 
 object MongoFilters {
 
-  def idFilter(_id: String): Bson = {
-    Filters.eq("_id", BsonObjectId(_id))
+  def idFilter(id: String): Bson = {
+    Filters.eq("_id", BsonObjectId(id))
   }
 
   def thermometerIdWithDateRangeFilter(thermometerId: String, createdAtMin: String, createdAtMax: String): Bson = {

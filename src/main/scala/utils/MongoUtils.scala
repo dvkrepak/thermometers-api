@@ -23,6 +23,29 @@ object MongoUtils {
     collection.aggregate(aggregation).toFuture()
   }
 
+  private def insertCollectionObject(collection: MongoCollection[Document],
+                                     obj: Document): Future[InsertOneResult] = {
+    collection
+      .insertOne(obj)
+      .toFuture()
+  }
+
+  private def updateCollectionObject(collection: MongoCollection[Document],
+                                     filter: Bson,
+                                     update: Bson): Future[UpdateResult] = {
+    collection
+      .updateOne(filter, update)
+      .toFuture()
+  }
+
+
+  private def deleteCollectionObject(collection: MongoCollection[Document],
+                                     filter: Bson): Future[DeleteResult] = {
+    collection
+      .deleteOne(filter)
+      .toFuture()
+  }
+
   @unused
   def findCollectionObjects(collection: MongoCollection[Document]): Future[Seq[Document]] = {
     collection.find().toFuture()
@@ -40,38 +63,32 @@ object MongoUtils {
     collection.countDocuments().toFuture()
   }
 
-  def findCollectionObjectWithId(collection: MongoCollection[Document], _id: String): Future[Seq[Document]] = {
-    val filter = MongoFilters.idFilter(_id)
+  def findCollectionObjectWithId(collection: MongoCollection[Document], id: String): Future[Seq[Document]] = {
+    val filter = MongoFilters.idFilter(id)
     findCollectionObjectsWithFilter(collection, filter)
   }
 
-  def deleteCollectionObject(collection: MongoCollection[Document], _id: String): Future[DeleteResult] = {
-    val filter = MongoFilters.idFilter(_id)
-    collection
-      .deleteOne(filter)
-      .toFuture()
+  def deleteCollectionObject(collection: MongoCollection[Document], id: String): Future[DeleteResult] = {
+    val filter = MongoFilters.idFilter(id)
+    deleteCollectionObject(collection, filter)
   }
 
   def createCollectionObject(collection: MongoCollection[Document], obj: String): Future[InsertOneResult] = {
     val doc = Document(obj)
-    collection
-      .insertOne(doc)
-      .toFuture()
+    insertCollectionObject(collection, doc)
   }
 
-  def updateCollectionObject(collection: MongoCollection[Document], _id: String, data: String): Future[UpdateResult] = {
-    val filter = MongoFilters.idFilter(_id)
+  def updateCollectionObject(collection: MongoCollection[Document], id: String, data: String): Future[UpdateResult] = {
+    val filter = MongoFilters.idFilter(id)
     val update = Document("$set" -> Document(data))
-    collection
-      .updateOne(filter, update)
-      .toFuture()
+    updateCollectionObject(collection, filter, update)
   }
 
   def findWithDateRangeWithThermometerId(collection: MongoCollection[Document],
-                                          _id: String,
+                                          id: String,
                                           createdAtMin: String,
                                           createdAtMax: String): Future[Seq[Document]] = {
-    val filter = MongoFilters.thermometerIdWithDateRangeFilter(_id, createdAtMin, createdAtMax)
+    val filter = MongoFilters.thermometerIdWithDateRangeFilter(id, createdAtMin, createdAtMax)
 
     findCollectionObjectsWithFilter(collection, filter)
   }
@@ -128,4 +145,10 @@ object MongoUtils {
     findCollectionObjectsWithAggregation(collection, aggregation)
   }
 
+  def saveError(collection: MongoCollection[Document],
+                errorText: String,
+                error: String): Future[InsertOneResult] = {
+    val doc = Document("error" -> errorText, "message" -> error)
+    insertCollectionObject(collection, doc)
+  }
 }

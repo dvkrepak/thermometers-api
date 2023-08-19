@@ -9,6 +9,7 @@ import org.mongodb.scala.bson.Document
 import org.mongodb.scala.result.{DeleteResult, InsertOneResult, UpdateResult}
 import play.api.libs.json.{JsArray, Json}
 import simulators.Thermometer
+import utils.RejectionHandlers.{thermometerEditorRejectionHandler, thermometerRejectionHandler}
 import utils.RouteUtils
 
 import scala.concurrent.Future
@@ -50,41 +51,44 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
     }
   }
 
-  private val createThermometer: Route = pathPrefix(api / version / service / "create") {
-    post {
-      // POST api/v1/thermometers/create
-      pathEndOrSingleSlash {
-        entity(as[Thermometer]) { thermometer => {
+  private val createThermometer: Route = handleRejections(thermometerRejectionHandler) {
+    pathPrefix(api / version / service / "create") {
+      post {
+        // POST api/v1/thermometers/create
+        pathEndOrSingleSlash {
+          entity(as[Thermometer]) { thermometer => {
 
-          val withDefaultThermometer: Thermometer = Thermometer.withDefaultCreated(thermometer)
-          val futureResponse: Future[InsertOneResult] =
-            createThermometer(Json.toJson(withDefaultThermometer).toString())
+            val withDefaultThermometer: Thermometer = Thermometer.withDefaultCreated(thermometer)
+            val futureResponse: Future[InsertOneResult] =
+              createThermometer(Json.toJson(withDefaultThermometer).toString())
 
-          handleBasicResponse(futureResponse)
+            handleBasicResponse(futureResponse)
+          }
           }
         }
       }
     }
   }
 
-  private val updateThermometer: Route = pathPrefix(api / version / service / "update") {
-    patch {
-      // PATCH api/v1/thermometers/update
-      pathEndOrSingleSlash {
-        entity(as[ThermometerEditor]) { editor => {
+  private val updateThermometer: Route = handleRejections(thermometerEditorRejectionHandler) {
+    pathPrefix(api / version / service / "update") {
+      patch {
+        // PATCH api/v1/thermometers/update
+        pathEndOrSingleSlash {
+          entity(as[ThermometerEditor]) { editor => {
 
-          val data = Json.toJson(Thermometer.setEditedAt(editor.data))
-          lazy val lazyResponse: Future[UpdateResult] =
-            editThermometer(editor.thermometerId, data.toString())
-          val futureResponse = withValidation(lazyResponse).mapTo[UpdateResult]
+            val data = Json.toJson(Thermometer.setEditedAt(editor.data))
+            lazy val lazyResponse: Future[UpdateResult] =
+              editThermometer(editor.thermometerId, data.toString())
+            val futureResponse = withValidation(lazyResponse).mapTo[UpdateResult]
 
-          handleBasicResponse(futureResponse)
+            handleBasicResponse(futureResponse)
+          }
           }
         }
       }
     }
   }
-
 
   private val deleteThermometer: Route = pathPrefix(api / version / service / "delete" / Segment) { _id =>
     delete {
@@ -241,8 +245,7 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
 
   val route: Route =
     getStatisticsDataList ~
-    getDataSummarizedList ~
-    getDataWithRangeDetail ~
-    getThermometersList ~ getThermometerDetail ~ createThermometer ~
-    updateThermometer ~ deleteThermometer
+    getDataSummarizedList ~ getDataWithRangeDetail ~
+    getThermometersList ~ getThermometerDetail ~
+    createThermometer ~ updateThermometer ~ deleteThermometer
 }
