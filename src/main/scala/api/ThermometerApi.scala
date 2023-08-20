@@ -7,7 +7,6 @@ import messages.MongoMessages._
 import org.mongodb.scala.bson.{BsonObjectId, Document}
 import org.mongodb.scala.result.{DeleteResult, InsertOneResult, UpdateResult}
 
-import scala.annotation.unused
 import scala.concurrent.Future
 
 trait ThermometerApi {
@@ -25,8 +24,8 @@ trait ThermometerApi {
   }
 
   private def validateDates(createdAtMin: String, createdAtMax: String): Unit = {
-    val correctDates = Validators.requireCorrectDateFormat(createdAtMin) &&
-      Validators.requireCorrectDateFormat(createdAtMax)
+    val correctDates = Validators.requireCorrectDate(createdAtMin) &&
+      Validators.requireCorrectDate(createdAtMax)
 
     if (!correctDates) {
       throw new IllegalArgumentException(
@@ -38,7 +37,7 @@ trait ThermometerApi {
     (mongoActor ? FindThermometersWithPagination(page, pageSize)).mapTo[Seq[Document]]
   }
 
-  def countThermometers(): Future[Long] = {
+  protected def countThermometers(): Future[Long] = {
     (mongoActor ? CountThermometers).mapTo[Long]
   }
 

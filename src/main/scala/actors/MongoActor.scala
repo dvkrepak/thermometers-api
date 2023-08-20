@@ -23,7 +23,7 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
 
   val lfuCache: Cache[Uri, Seq[Document]] = CacheSettings.lfuDocumentCache(context.system)
 
-  private def getCollection(name: String): MongoCollection[Document] = {
+  def getCollection(name: String): MongoCollection[Document] = {
     Try(database.getCollection(name)) match {
       case Success(value) => value
       case Failure(ex) => throw ex
@@ -167,6 +167,10 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
       findGeneralReportStatistics(sender(), createdAtMin, createdAtMax,
         MongoUtils.findMedianFromReportsWithRange,
       "median", "FindMedianFromReportsWithRange")
+    case unexpectedMessage: Any =>
+      val errorText = "MongoActor received an unexpected message"
+      log.error(s"$errorText: $unexpectedMessage")
+      logError(errorText, new Exception(errorText))
   }
 
   private def logError(errorText: String,

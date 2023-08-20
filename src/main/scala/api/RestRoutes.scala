@@ -160,9 +160,14 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
                   findAverageFromReportsWithRange, findMedianFromReportsWithRange)
 
               val resolver = RouteUtils.buildOperationResolver(functions)
-              val function = RouteUtils.getStatisticFunction(selectedOperation, resolver)
+              val function: Option[(String, String) => Future[Seq[Document]]] =
+                RouteUtils.getStatisticFunction(selectedOperation, resolver)
 
-              lazy val lazyResponse: Future[Seq[Document]] = function(createdAtMin, createdAtMax)
+              if (function.isEmpty) {
+                complete(StatusCodes.BadRequest, "Error: Invalid operation selected.")
+              }
+
+              lazy val lazyResponse: Future[Seq[Document]] = function.get(createdAtMin, createdAtMax)
               val futureResponse = withValidation(lazyResponse).mapTo[Seq[Document]]
               handleBasicJsonResponse(futureResponse)
 
