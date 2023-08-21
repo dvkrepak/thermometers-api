@@ -1,6 +1,6 @@
 package api
 
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCodes}
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCode, StatusCodes}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{RequestContext, Route, RouteResult}
 import marshallers.ThermometerMarshaller
@@ -46,7 +46,7 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
         lazy val lazyResponse: Future[Seq[Document]] = findThermometer(_id)
         val futureResponse = withValidation(lazyResponse).mapTo[Seq[Document]]
 
-        handleBasicJsonResponse(futureResponse)
+        handleBasicJsonResponse(futureResponse, StatusCodes.BadRequest)
       }
     }
   }
@@ -59,10 +59,11 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
           entity(as[Thermometer]) { thermometer => {
 
             val withDefaultThermometer: Thermometer = Thermometer.withDefaultCreated(thermometer)
-            val futureResponse: Future[InsertOneResult] =
+            val futureResponse: Future[InsertOneResult] = {
               createThermometer(Json.toJson(withDefaultThermometer).toString())
+            }
 
-            handleBasicResponse(futureResponse)
+            handleBasicResponse(futureResponse, StatusCodes.Created, StatusCodes.BadRequest)
           }
           }
         }
@@ -82,8 +83,20 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
               editThermometer(editor.thermometerId, data.toString())
             val futureResponse = withValidation(lazyResponse).mapTo[UpdateResult]
 
-            handleBasicResponse(futureResponse)
-          }
+            onComplete(futureResponse) {
+
+              case Success(data) =>
+
+                if (data.getModifiedCount == 0) {
+                  complete(StatusCodes.BadRequest, data.toString)
+                } else {
+                  complete(StatusCodes.OK, data.toString)
+                }
+
+              case Failure(ex) =>
+                complete(StatusCodes.BadRequest, s"Error: ${ex.getMessage}")
+              }
+            }
           }
         }
       }
@@ -94,10 +107,20 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
     delete {
       // DELETE api/v1/thermometers/delete/{_id: String}
       pathEndOrSingleSlash {
+
         lazy val lazyResponse: Future[DeleteResult] = deleteThermometer(_id)
         val futureResponse = withValidation(lazyResponse).mapTo[DeleteResult]
 
-        handleBasicResponse(futureResponse)
+        onComplete(futureResponse) {
+          case Success(data) =>
+            if (data.getDeletedCount == 0) {
+              complete(StatusCodes.BadRequest, data.toString)
+            } else {
+              complete(StatusCodes.OK, data.toString)
+            }
+          case Failure(ex) =>
+            complete(StatusCodes.BadRequest, s"Error: ${ex.getMessage}")
+        }
       }
     }
   }
@@ -129,7 +152,7 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
             findReportWithRangeWithId(thermometerId, createdAtMin, createdAtMax)
           val futureResponse = withValidation(lazyResponse).mapTo[Seq[Document]]
 
-          handleBasicJsonResponse(futureResponse)
+          handleBasicJsonResponse(futureResponse, StatusCodes.BadRequest)
         }
       }
     }
@@ -169,7 +192,7 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
 
               lazy val lazyResponse: Future[Seq[Document]] = function.get(createdAtMin, createdAtMax)
               val futureResponse = withValidation(lazyResponse).mapTo[Seq[Document]]
-              handleBasicJsonResponse(futureResponse)
+              handleBasicJsonResponse(futureResponse, StatusCodes.BadRequest)
 
             case None =>
               complete(StatusCodes.BadRequest,
@@ -189,24 +212,33 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
     }
   }
 
-  private def handleBasicJsonResponse(futureResponse: Future[Seq[Document]]): RequestContext => Future[RouteResult] = {
+  private def handleBasicJsonResponse(futureResponse: Future[Seq[Document]],
+                                      failureStatusCode: StatusCode): RequestContext => Future[RouteResult] = {
     onComplete(futureResponse) {
       case Success(data) =>
-        val resultJson = data.map(_.toJson)
-        val jsonResponse = "[" + resultJson.mkString(",") + "]"
-        complete(HttpEntity(ContentTypes.`application/json`, jsonResponse))
+        println(data.isEmpty)
+        if (data.isEmpty) {
+          // If there is no data, return 204 No Content
+          complete(StatusCodes.NoContent)
+        } else {
+          val resultJson = data.map(_.toJson)
+          val jsonResponse = "[" + resultJson.mkString(",") + "]"
+          complete(HttpEntity(ContentTypes.`application/json`, jsonResponse))
+        }
       case Failure(ex) =>
         val errorMessage = s"Error: ${ex.getMessage}"
-        complete(StatusCodes.InternalServerError, HttpEntity(ContentTypes.`text/plain(UTF-8)`, errorMessage))
+        complete(failureStatusCode, HttpEntity(ContentTypes.`text/plain(UTF-8)`, errorMessage))
     }
   }
 
-  private def handleBasicResponse(futureResponse: Future[Any]): RequestContext => Future[RouteResult] = {
+  private def handleBasicResponse(futureResponse: Future[Any],
+                                  successStatusCode: StatusCode,
+                                  failureStatusCode: StatusCode): RequestContext => Future[RouteResult] = {
     onComplete(futureResponse) {
       case Success(data) =>
-        complete(StatusCodes.OK, data.toString)
+        complete(successStatusCode, data.toString)
       case Failure(ex) =>
-        complete(StatusCodes.BadRequest, s"Error: ${ex.getMessage}")
+        complete(failureStatusCode, s"Error: ${ex.getMessage}")
     }
   }
 
@@ -220,7 +252,7 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
 
         if (data.isEmpty) {
           // If there is no data, return 204 No Content
-          complete(StatusCodes.NoContent, HttpEntity(ContentTypes.`text/plain(UTF-8)`, "No content to display"))
+          complete(StatusCodes.NoContent)
         } else {
 
           val count: Long = response._2 // Count of all documents

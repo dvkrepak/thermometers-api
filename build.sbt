@@ -24,6 +24,7 @@ libraryDependencies ++= Seq(
   "org.scalatestplus" %% "mockito-3-4" % "3.2.10.0" % Test,
   "org.scalatest" %% "scalatest" % "3.2.15" % Test,
   "org.mockito" %% "mockito-scala" % "1.17.12",
-  "com.netflix.rxjava" % "rxjava-scala" % "0.20.7",
+  "com.typesafe.akka" %% "akka-stream-testkit" % AkkaVersion,
+  "com.typesafe.akka" %% "akka-http-testkit" % AkkaHttpVersion,
 
 )

@@ -27,5 +27,7 @@ object MongoMessages {
   // Thermometer helper messages
   case class ThermometerEditor(thermometerId: String, data: Thermometer)
 
+  // Test messages
+  case object DropDatabase
 }
 

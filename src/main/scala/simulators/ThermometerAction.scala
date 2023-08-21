@@ -4,7 +4,7 @@ import org.mongodb.scala.bson.ObjectId
 
 import java.util.Date
 
-case class ThermometerAction(id: ObjectId,
+case class ThermometerAction(_id: ObjectId,
                              thermometerId: ObjectId,
                              temperature: Option[Int] = None,
                              created_at: Date)

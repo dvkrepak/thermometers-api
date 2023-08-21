@@ -3,18 +3,19 @@ package simulators
 import akka.actor.ActorRef
 import org.mongodb.scala.bson.ObjectId
 
+
 import java.util.Date
 import scala.util.Random
 
-case class Thermometer(id: ObjectId = new ObjectId(),
+case class Thermometer(_id: ObjectId = new ObjectId(),
                        description: Option[String] = None,
                        createdAt: Option[Date] = None,
                        editedAt: Option[Date] = None) {
 
-  require(id.toString.length == 24)
+  require(_id.toString.length == 24)
 
   def requestTemperature(actor: ActorRef): Unit = {
-    actor ! ThermometerAction(thermometerId = id, simulateWork())
+    actor ! ThermometerAction(thermometerId = _id, simulateWork())
   }
 
   /**
@@ -37,8 +38,8 @@ case class Thermometer(id: ObjectId = new ObjectId(),
 object Thermometer {
 
   def apply(description: Option[String], createdAt: Option[Date], editedAt: Option[Date]): Thermometer = {
-    val id = new ObjectId()
-    Thermometer(id, description, createdAt, editedAt)
+    val _id = new ObjectId()
+    Thermometer(_id, description, createdAt, editedAt)
   }
 
   /**

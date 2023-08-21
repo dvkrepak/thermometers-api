@@ -14,7 +14,7 @@ trait ThermometerApi {
   def createMongoDbActor(): ActorRef
 
   implicit val requestTimeout: Timeout
-  private lazy val mongoActor: ActorRef = createMongoDbActor()
+  protected lazy val mongoActor: ActorRef = createMongoDbActor()
 
   private def validateId(id: String, name: String): Unit = {
     if (!Validators.requireCorrectId(id)) {

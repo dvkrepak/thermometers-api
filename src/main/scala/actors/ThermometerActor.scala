@@ -9,9 +9,9 @@ import play.api.libs.json.Json
 import simulators.ThermometerAction
 
 
-case class ThermometerActor(timeout: Timeout) extends Actor with ThermometerApi with ThermometerActionMarshaller {
+case class ThermometerActor(timeout: Timeout, actor: ActorRef) extends Actor with ThermometerApi with ThermometerActionMarshaller {
 
-  override def createMongoDbActor(): ActorRef = context.actorOf(Props(new MongoActor()))
+  override def createMongoDbActor(): ActorRef = actor
   override implicit val requestTimeout: Timeout = timeout
   private val log: LoggingAdapter = Logging(context.system, this)
 

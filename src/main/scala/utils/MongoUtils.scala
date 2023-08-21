@@ -1,7 +1,7 @@
 package utils
 
 import org.bson.conversions.Bson
-import org.mongodb.scala.MongoCollection
+import org.mongodb.scala.{MongoCollection, MongoDatabase}
 import org.mongodb.scala.bson.Document
 import org.mongodb.scala.result.{DeleteResult, InsertOneResult, UpdateResult}
 
@@ -25,6 +25,7 @@ object MongoUtils {
 
   private def insertCollectionObject(collection: MongoCollection[Document],
                                      obj: Document): Future[InsertOneResult] = {
+
     collection
       .insertOne(obj)
       .toFuture()
@@ -150,5 +151,9 @@ object MongoUtils {
                 error: String): Future[InsertOneResult] = {
     val doc = Document("error" -> errorText, "message" -> error)
     insertCollectionObject(collection, doc)
+  }
+
+  def dropDatabase(collection: MongoDatabase): Future[Unit] = {
+    collection.drop().toFuture().map(_ => ())
   }
 }

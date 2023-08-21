@@ -1,4 +1,4 @@
-import actors.ThermometerActor
+import actors.{MongoActor, ThermometerActor}
 import akka.actor.{ActorSystem, Props}
 import akka.http.scaladsl.Http
 import api.RestApi
@@ -16,7 +16,8 @@ object Settings extends App {
 
   // Mock data for system start
   private val thermometer = Thermometer.withDefaultCreated(Thermometer(description = Some("Test thermomer"), None, None))
-  private val actor = system.actorOf(Props(ThermometerActor(5.seconds)), "MongoActor")
+  private val mongoActor = system.actorOf(Props(new MongoActor()), "MongoActor")
+  private val actor = system.actorOf(Props(ThermometerActor(5.seconds, mongoActor)), "ThermometerActor")
   private val adapter = new ThermometerAdapter(thermometer, actor)
 
   private val restApi: RestApi = new RestApi(system, 5.seconds)

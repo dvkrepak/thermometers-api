@@ -4,7 +4,7 @@ import akka.actor.{Actor, ActorRef, Status}
 import akka.event.{Logging, LoggingAdapter}
 import akka.http.caching.scaladsl.Cache
 import akka.http.scaladsl.model.Uri
-import messages.MongoMessages._
+import messages.MongoMessages.{DropDatabase, _}
 import org.mongodb.scala.bson.Document
 import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase}
 import utils.{CacheSettings, MongoUtils}
@@ -85,12 +85,12 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
       "Error occurred during DeleteThermometer")
 
     case CreateReport(thermometerAction: String) =>
-
       val collection = getCollection("thermometerActions")
       val insertFuture = MongoUtils.createCollectionObject(collection, thermometerAction)
 
       insertFuture.onComplete {
         case Success(result) =>
+          println("Here")
           log.info(s"Inserted Data: ${result.getInsertedId}")
         case Failure(error) =>
           log.error(s"Error occurred during CreateData: ${error.getMessage}")
@@ -167,6 +167,10 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
       findGeneralReportStatistics(sender(), createdAtMin, createdAtMax,
         MongoUtils.findMedianFromReportsWithRange,
       "median", "FindMedianFromReportsWithRange")
+    case DropDatabase =>
+      MongoUtils.dropDatabase(database)
+      log.info("Dropped database")
+
     case unexpectedMessage: Any =>
       val errorText = "MongoActor received an unexpected message"
       log.error(s"$errorText: $unexpectedMessage")
