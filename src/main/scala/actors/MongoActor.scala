@@ -90,7 +90,6 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
 
       insertFuture.onComplete {
         case Success(result) =>
-          println("Here")
           log.info(s"Inserted Data: ${result.getInsertedId}")
         case Failure(error) =>
           log.error(s"Error occurred during CreateData: ${error.getMessage}")

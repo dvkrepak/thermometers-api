@@ -219,7 +219,7 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
         println(data.isEmpty)
         if (data.isEmpty) {
           // If there is no data, return 204 No Content
-          complete(StatusCodes.NoContent)
+          complete(StatusCodes.NoContent, HttpEntity(ContentTypes.`application/json`, "[]"))
         } else {
           val resultJson = data.map(_.toJson)
           val jsonResponse = "[" + resultJson.mkString(",") + "]"
@@ -227,7 +227,7 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
         }
       case Failure(ex) =>
         val errorMessage = s"Error: ${ex.getMessage}"
-        complete(failureStatusCode, HttpEntity(ContentTypes.`text/plain(UTF-8)`, errorMessage))
+        complete(failureStatusCode, HttpEntity(ContentTypes.`application/json`, errorMessage))
     }
   }
 
