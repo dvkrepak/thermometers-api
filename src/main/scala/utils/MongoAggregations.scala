@@ -56,7 +56,7 @@ object MongoAggregations {
       fields(
         excludeId(),
         computed("thermometerId", "$_id"),
-        include(accumulatorName)
+        computed(accumulatorName, s"$$$accumulatorName")
       )
     )
 
@@ -64,6 +64,7 @@ object MongoAggregations {
   }
 
   def minimumDataWithRange(dateFilter: Bson): Seq[Bson] = {
+
     val accumulator = Accumulators.min("minTemperature", "$temperature")
     accumulatorWithDateRange(dateFilter, accumulator, "minTemperature")
   }

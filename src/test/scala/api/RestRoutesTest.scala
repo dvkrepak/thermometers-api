@@ -500,7 +500,7 @@ class RestRoutesTest extends AnyWordSpec with Matchers with ScalatestRouteTest w
       val request = Get(s"/api/v1/thermometers/statistics?from=$createdAtMin&till=$createdAtMax&tmp_min=$minimumOpt")
 
       val correctResponse =
-        "FulfilledFuture([{\"minTemperature\": -10, \"thermometerId\": {\"$oid\": \"64dfa3dc8e655049117e49b4\"}}])"
+        "FulfilledFuture([{\"thermometerId\": {\"$oid\": \"64dfa3dc8e655049117e49b4\"}, \"minTemperature\": -10}])"
 
       request ~> route ~> check {
         status shouldBe StatusCodes.OK
@@ -523,7 +523,7 @@ class RestRoutesTest extends AnyWordSpec with Matchers with ScalatestRouteTest w
       val request = Get(s"/api/v1/thermometers/statistics?from=$createdAtMin&till=$createdAtMax&tmp_max=$maximumOpt")
 
       val correctResponse =
-        "FulfilledFuture([{\"maxTemperature\": 10, \"thermometerId\": {\"$oid\": \"64dfa3dc8e655049117e49b4\"}}])"
+        "FulfilledFuture([{\"thermometerId\": {\"$oid\": \"64dfa3dc8e655049117e49b4\"}, \"maxTemperature\": 10}])"
 
       request ~> route ~> check {
         status shouldBe StatusCodes.OK
