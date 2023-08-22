@@ -10,16 +10,15 @@ import org.mongodb.scala.model.Aggregates.project
 import org.mongodb.scala.model.Projections.{computed, excludeId, fields, include}
 import org.mongodb.scala.model.{Aggregates, BsonField}
 
-
 object MongoAggregations {
 
-  private val summaryAggregation: Seq[Bson] = List(
+  private val baseSummaryAggregation: Seq[Bson] = List(
     sort(descending("created_at")),
     group("$thermometerId",
       first("lastTemperature", "$temperature"),
       first("lastEventTime", "$created_at")
     ),
-      project(
+    project(
       fields(
         excludeId(),
         computed("thermometerId", "$_id"),
@@ -33,89 +32,90 @@ object MongoAggregations {
     group("$thermometerId"),
   )
 
+  /**
+   * Aggregation for summary with pagination.
+   *
+   * @param page Page number
+   * @param pageSize Number of items per page
+   * @return Aggregation sequence with pagination stages
+   */
   def summaryAggregationWithPagination(page: Int, pageSize: Int): Seq[Bson] = {
     val paginationStages = List(
       skip((page - 1) * pageSize),
       limit(pageSize)
     )
 
-    summaryAggregation ++ paginationStages
+    baseSummaryAggregation ++ paginationStages
   }
 
-  private def accumulatorWithDateRange(dateFilter: Bson, accumulator: BsonField,
-                                       accumulatorName: String): Seq[Bson] = {
-    List(
-      Aggregates.filter(dateFilter),
-      group("$thermometerId", accumulator),
-      // Project the output fields
-      project(
-        fields(
-          excludeId(),
-          computed("thermometerId", "$_id"),
-          include(accumulatorName)
-        )
+  private def accumulatorWithDateRange(dateFilter: Bson, accumulator: BsonField, accumulatorName: String): Seq[Bson] = {
+    val filterStage = Aggregates.filter(dateFilter)
+    val groupStage = group("$thermometerId", accumulator)
+
+    val projectStage = project(
+      fields(
+        excludeId(),
+        computed("thermometerId", "$_id"),
+        include(accumulatorName)
       )
     )
+
+    Seq(filterStage, groupStage, projectStage)
   }
+
   def minimumDataWithRange(dateFilter: Bson): Seq[Bson] = {
     val accumulator = Accumulators.min("minTemperature", "$temperature")
-
     accumulatorWithDateRange(dateFilter, accumulator, "minTemperature")
   }
 
   def maximumDateWithRange(dateFilter: Bson): Seq[Bson] = {
     val accumulator = Accumulators.max("maxTemperature", "$temperature")
-
     accumulatorWithDateRange(dateFilter, accumulator, "maxTemperature")
   }
 
   def averageDateWithRange(dateFilter: Bson): Seq[Bson] = {
+    val filteredAccumulator = Aggregates.filter(dateFilter)
+    val groupedAvgAccumulator = group("$thermometerId",
+      Accumulators.avg("avgTemperature", "$temperature"))
 
-    val accumulator = Seq(
-      Aggregates.filter(dateFilter),
-      group("$thermometerId", Accumulators.avg("avgTemperature", "$temperature")),
-      // Round the average to 4 decimal places
-      project(
-        fields(
-          excludeId(),
-          computed("thermometerId", "$_id"),
-          computed("avgTemperature", Document("$round" -> BsonArray("$avgTemperature", BsonInt32(4))))
-        )
+    val roundedAvgAccumulator = project(
+      fields(
+        excludeId(),
+        computed("thermometerId", "$_id"),
+        computed("avgTemperature",
+          Document("$round" -> BsonArray("$avgTemperature", BsonInt32(4))))
       )
     )
 
-    accumulator
+    Seq(filteredAccumulator, groupedAvgAccumulator, roundedAvgAccumulator)
   }
 
   def medianDateWithRange(dateFilter: Bson): Seq[Bson] = {
+    // Define individual aggregation stages
+    val filterStage = Aggregates.`match`(dateFilter)
+    val sortStage = Aggregates.sort(ascending("temperature"))
+    val groupStage = Aggregates.group("$thermometerId",
+      Accumulators.push("temperatures", "$temperature"))
 
-    val aggregation = Seq(
-      // Filter the documents by date range
-      Aggregates.`match`(dateFilter),
-      // Sort the temperatures ascending
-      Aggregates.sort(ascending("temperature")),
-      // Group by thermometerId and push all the temperatures to an array
-      Aggregates.group("$thermometerId", Accumulators.push("temperatures", "$temperature")),
-      // Get the size of the array
-      Aggregates.project(
-        fields(
-          computed("thermometerId", "$_id"),
-          computed("temperatures", "$temperatures"),
-          computed("size", Document("$size" -> "$temperatures"))
-        )
-      ),
-      // Get the median by dividing the size of the array by 2 and rounding it down
-      Aggregates.project(
-        fields(
-          excludeId(),
-          computed("thermometerId", "$thermometerId"),
-          computed("median",
-            Document("$arrayElemAt" ->
-              BsonArray("$temperatures",
-                BsonDocument("$floor" -> BsonDocument("$divide" -> BsonArray("$size", BsonInt32(2)))))))
-        )
+    val projectSizeStage = Aggregates.project(
+      fields(
+        computed("thermometerId", "$_id"),
+        computed("temperatures", "$temperatures"),
+        computed("size", Document("$size" -> "$temperatures"))
       )
     )
-    aggregation
+
+    val projectMedianStage = Aggregates.project(
+      fields(
+        excludeId(),
+        computed("thermometerId", "$thermometerId"),
+        computed("median",
+          Document("$arrayElemAt" ->
+            BsonArray("$temperatures",
+              BsonDocument("$floor" -> BsonDocument("$divide" -> BsonArray("$size", BsonInt32(2)))))))
+      )
+    )
+
+    Seq(filterStage, sortStage, groupStage, projectSizeStage, projectMedianStage)
   }
 }

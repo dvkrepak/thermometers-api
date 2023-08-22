@@ -21,7 +21,7 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
   private val log: LoggingAdapter = Logging(context.system, this)
   implicit val executionContext: ExecutionContextExecutor = ExecutionContext.global
 
-  val lfuCache: Cache[Uri, Seq[Document]] = CacheSettings.lfuDocumentCache(context.system)
+  val lfuCache: Cache[Uri, Seq[Document]] = CacheSettings.createLfuDocumentCache(context.system)
 
   def getCollection(name: String): MongoCollection[Document] = {
     Try(database.getCollection(name)) match {
@@ -34,14 +34,14 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
 
     case FindThermometersWithPagination(page: Int, pageSize: Int) =>
       val collection = getCollection("thermometers")
-      val findFuture = MongoUtils.findCollectionObjectsWithPagination(collection, page, pageSize)
+      val findFuture = MongoUtils.findDocumentsWithPagination(collection, page, pageSize)
 
       handleBasicFindQueryResult(sender(), findFuture,
         "Thermometers",
         "Error occurred during FindAllThermometers")
     case CountThermometers =>
       val collection = getCollection("thermometers")
-      val countFuture: Future[Long] = MongoUtils.countCollectionObjects(collection)
+      val countFuture: Future[Long] = MongoUtils.countDocuments(collection)
 
       handleBasicQuery(sender(), countFuture,
         "Count Thermometers",
@@ -50,7 +50,7 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
     case FindThermometer(id: String) =>
 
       val collection = getCollection("thermometers")
-      val findFuture = MongoUtils.findCollectionObjectWithId(collection, id)
+      val findFuture = MongoUtils.findDocumentWithId(collection, id)
 
       handleBasicFindQueryResult(sender(), findFuture,
         "FindOne Document",
@@ -60,7 +60,7 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
     case CreateThermometer(thermometer: String) =>
 
       val collection = getCollection("thermometers")
-      val insertFuture = MongoUtils.createCollectionObject(collection, thermometer)
+      val insertFuture = MongoUtils.createDocument(collection, thermometer)
 
       handleBasicQuery(sender(), insertFuture,
         "InsertedOne Document",
@@ -69,7 +69,7 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
     case UpdateThermometer(id: String, json: String) =>
 
       val collection = getCollection("thermometers")
-      val updateFuture = MongoUtils.updateCollectionObject(collection, id, json)
+      val updateFuture = MongoUtils.updateDocument(collection, id, json)
 
       handleBasicQuery(sender(), updateFuture,
         "UpdatedOne Document",
@@ -78,7 +78,7 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
     case DeleteThermometer(id: String) =>
 
       val collection = getCollection("thermometers")
-      val deleteFuture = MongoUtils.deleteCollectionObject(collection, id)
+      val deleteFuture = MongoUtils.deleteDocument(collection, id)
 
       handleBasicQuery(sender(), deleteFuture,
       "DeletedOne Document",
@@ -86,7 +86,7 @@ class MongoActor(connectionString: String = "mongodb://localhost:27017",
 
     case CreateReport(thermometerAction: String) =>
       val collection = getCollection("thermometerActions")
-      val insertFuture = MongoUtils.createCollectionObject(collection, thermometerAction)
+      val insertFuture = MongoUtils.createDocument(collection, thermometerAction)
 
       insertFuture.onComplete {
         case Success(result) =>

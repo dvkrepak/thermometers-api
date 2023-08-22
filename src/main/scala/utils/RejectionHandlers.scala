@@ -2,7 +2,7 @@ package utils
 
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives.complete
-import akka.http.scaladsl.server.{RejectionHandler, ValidationRejection}
+import akka.http.scaladsl.server.{RejectionHandler, StandardRoute, ValidationRejection}
 import org.mongodb.scala.bson.ObjectId
 
 object RejectionHandlers {
@@ -11,8 +11,7 @@ object RejectionHandlers {
     s"Field '$fieldName' received incorrect type. Expected: $expectedType."
   }
 
-  private def getExpectedType(fieldName: String): String =
-    fieldName match {
+  private def getExpectedType(fieldName: String): String = fieldName match {
       case "id" => "ObjectId"
       case "description" => "String"
       case "createdAt" => "Date"
@@ -28,27 +27,37 @@ object RejectionHandlers {
     matchResult.getOrElse("Incorrect field name")
   }
 
+  private def handleValidationRejection(fieldName: String): StandardRoute = {
+    val expectedType = getExpectedType(fieldName)
+    complete(StatusCodes.BadRequest, getTypeErrorMessage(fieldName, expectedType))
+  }
 
+  /**
+   * Rejection handler for the Thermometer model
+   *
+   * If the rejection message contains information about the "id" field,
+   * it responds with a BadRequest indicating that "id" is required and provides an example ObjectId
+   */
   val thermometerRejectionHandler: RejectionHandler =
     RejectionHandler.newBuilder()
       .handle {
+        case rejection: ValidationRejection if rejection.message.contains("id") =>
+          complete(StatusCodes.BadRequest,
+            s"id is required. Please provide a valid ObjectId, for example: ${new ObjectId()}")
+
         case rejection: ValidationRejection =>
-
-          if (rejection.message.contains("id")) {
-            complete(StatusCodes.BadRequest,
-              s"id is required. Please provide a valid ObjectId, for example: ${new ObjectId()}")
-
-          } else {
-            val fieldName = getFieldName(rejection.message)
-
-            val expectedType = getExpectedType(fieldName)
-
-            complete(StatusCodes.BadRequest, getTypeErrorMessage(fieldName, expectedType))
-          }
+          val fieldName = getFieldName(rejection.message)
+          handleValidationRejection(fieldName)
       }
       .result()
 
-  def thermometerEditorRejectionHandler: RejectionHandler =
+  /**
+   * Rejection handler for the ThermometerEditor model
+   *
+   * If the rejection message contains information about the "thermometerId" field,
+   * it responds with a BadRequest indicating that "thermometerId" is required as a String
+   */
+  val thermometerEditorRejectionHandler: RejectionHandler =
     RejectionHandler.newBuilder()
       .handle {
         case rejection: ValidationRejection if rejection.message.contains("thermometerId") =>
@@ -58,7 +67,6 @@ object RejectionHandlers {
           thermometerRejectionHandler(Seq(rejection)) match {
             case Some(route) => route // Use the provided route
             case None =>
-              // Never supposed to happen
               complete(StatusCodes.InternalServerError, "Internal server error")
           }
       }

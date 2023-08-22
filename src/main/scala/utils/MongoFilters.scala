@@ -3,7 +3,7 @@ package utils
 import org.mongodb.scala.bson.BsonObjectId
 import org.mongodb.scala.bson.conversions.Bson
 import org.mongodb.scala.model.Filters
-import org.mongodb.scala.model.Filters.{and, equal, gte, lte}
+import org.mongodb.scala.model.Filters.{and, gte, lte}
 
 object MongoFilters {
 
@@ -12,9 +12,8 @@ object MongoFilters {
   }
 
   def thermometerIdWithDateRangeFilter(thermometerId: String, createdAtMin: String, createdAtMax: String): Bson = {
-
     and(
-      equal("thermometerId", BsonObjectId(thermometerId)),
+      thermometerIdFilter(thermometerId),
       dateRangeFilter(createdAtMin, createdAtMax)
     )
   }
@@ -23,8 +22,7 @@ object MongoFilters {
     Filters.eq("thermometerId", BsonObjectId(thermometerId))
   }
 
-  def dateRangeFilter(createdAtMin: String,
-                      createdAtMax: String): Bson = {
+  def dateRangeFilter(createdAtMin: String, createdAtMax: String): Bson = {
     and(
       gte("created_at", createdAtMin),
       lte("created_at", createdAtMax)

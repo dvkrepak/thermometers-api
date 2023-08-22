@@ -22,7 +22,7 @@ case class Thermometer(_id: ObjectId = new ObjectId(),
    * Simulates the temperature measurement of the Thermometer
    * Produces correct temperature with 80% rate
    *
-   * @return `Some(Int)` if operation is successful, where `Int` is in range [-100, 100]
+   * @return `Some(Int)` if operation is successful, where `Int` is in range [-100, 100],
    *         `None` otherwise
    */
   private def simulateWork(): Option[Int] = {
