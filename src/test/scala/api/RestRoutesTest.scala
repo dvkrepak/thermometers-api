@@ -23,6 +23,9 @@ class RestRoutesTest extends AnyWordSpec with Matchers with ScalatestRouteTest w
 
   override implicit val requestTimeout: Timeout = 5.seconds
 
+  val thermometerActor: ActorRef =
+    testActorSystem.actorOf(Props(ThermometerActor(requestTimeout, mongoActor)))
+
   private def dropDatabase(): Unit = {
     mongoActor ! DropDatabase
   }
@@ -30,6 +33,16 @@ class RestRoutesTest extends AnyWordSpec with Matchers with ScalatestRouteTest w
   override protected def beforeAll(): Unit = {
     // Drop the database before running the tests to ensure a clean state
     dropDatabase()
+
+    val actionPositiveTen = ThermometerAction(new ObjectId("64dfa3dc8e655049117e49b4"), Some(10))
+    Thread.sleep(1)
+    val actionNegativeTen = ThermometerAction(new ObjectId("64dfa3dc8e655049117e49b4"), Some(-10))
+    Thread.sleep(1)
+    val actionNull = ThermometerAction(new ObjectId("64dfa3dc8e655049117e49b4"), None)
+
+    Seq(actionPositiveTen, actionNegativeTen, actionNull).foreach { action =>
+      thermometerActor ! action
+    }
   }
 
   override protected def afterAll(): Unit = {
@@ -57,9 +70,15 @@ class RestRoutesTest extends AnyWordSpec with Matchers with ScalatestRouteTest w
       val request = Post("/api/v1/thermometers/create")
         .withEntity(ContentTypes.`application/json`, Json.toJson(thermometer).toString())
 
+      val correctResponse: String =
+        "AcknowledgedInsertOneResult{insertedId=BsonObjectId{value=64dfa3dc8e655049117e49b4}}"
+
       request ~> route ~> check {
         status shouldBe StatusCodes.Created
         contentType shouldBe ContentTypes.`application/json`
+
+        val responseString = responseAs[String]
+        responseString shouldBe correctResponse
       }
     }
 
@@ -69,9 +88,15 @@ class RestRoutesTest extends AnyWordSpec with Matchers with ScalatestRouteTest w
       val request = Post("/api/v1/thermometers/create")
         .withEntity(ContentTypes.`application/json`, Json.toJson(thermometer).toString())
 
+      val correctResponsePart: String =
+        "AcknowledgedInsertOneResult{insertedId=BsonObjectId{"
+
       request ~> route ~> check {
         status shouldBe StatusCodes.Created
         contentType shouldBe ContentTypes.`application/json`
+
+        val responseString = responseAs[String]
+        responseString should include(correctResponsePart)
       }
     }
 
@@ -82,9 +107,15 @@ class RestRoutesTest extends AnyWordSpec with Matchers with ScalatestRouteTest w
       val request = Post("/api/v1/thermometers/create")
         .withEntity(ContentTypes.`application/json`, Json.toJson(thermometer).toString())
 
+      val correctResponsePart: String =
+        "Write error: WriteError{code=11000, message='E11000 duplicate key error collection:"
+
       request ~> route ~> check {
         status shouldBe StatusCodes.BadRequest
         contentType shouldBe ContentTypes.`application/json`
+
+        val responseString = responseAs[String]
+        responseString should include(correctResponsePart)
       }
     }
 
@@ -93,24 +124,49 @@ class RestRoutesTest extends AnyWordSpec with Matchers with ScalatestRouteTest w
 
       val request = Get("/api/v1/thermometers/list?page=1&page_size=10")
 
+      val correctResponseParts: Seq[String] = Seq(
+
+        "FulfilledFuture({\"count\":2,\"results\":[{\"_id\":{\"$oid\":\"64dfa3dc8e655049117e49b4\"}," +
+          "\"description\":\"test\"",
+
+          "}],\"page\":1,\"page_size\":10,\"next_page\":false})"
+
+      )
 
       request ~> route ~> check {
         status shouldBe StatusCodes.OK
         contentType shouldBe ContentTypes.`application/json`
+
+        val responseEntity = response.entity
+        val responseString = responseEntity.toStrict(5.seconds).map(_.data.utf8String).toString
+
+        correctResponseParts.foreach { part =>
+          responseString should include(part)
+        }
       }
     }
 
     // GET thermometers/{_id: String} test
     "return a 200 for GET api/v1/thermometers/{_id: String} with existing id" in {
+
       val request = Get("/api/v1/thermometers/64dfa3dc8e655049117e49b4")
+
+      val correctResponsePart =
+        "FulfilledFuture([{\"_id\": {\"$oid\": \"64dfa3dc8e655049117e49b4\"}, \"description\": \"test\", \"createdAt\": "
 
       request ~> route ~> check {
         status shouldBe StatusCodes.OK
         contentType shouldBe ContentTypes.`application/json`
+
+        val responseEntity = response.entity
+        val responseString = responseEntity.toStrict(5.seconds).map(_.data.utf8String).toString
+
+        responseString should include(correctResponsePart)
       }
     }
 
     "return a 204 for GET api/v1/thermometers/{_id: String} with not existing id" in {
+
       val request = Get("/api/v1/thermometers/64dfa3dc8e655049117e49b0")
 
       request ~> route ~> check {
@@ -127,9 +183,14 @@ class RestRoutesTest extends AnyWordSpec with Matchers with ScalatestRouteTest w
       val request = Patch("/api/v1/thermometers/update")
         .withEntity(ContentTypes.`application/json`, Json.toJson(thermometerEditor).toString())
 
+      val correctResponse = "AcknowledgedUpdateResult{matchedCount=1, modifiedCount=1, upsertedId=null}"
+
       request ~> route ~> check {
         status shouldBe StatusCodes.OK
         contentType shouldBe ContentTypes.`application/json`
+
+        val responseString = responseAs[String]
+        responseString shouldBe correctResponse
       }
 
     }
@@ -138,11 +199,17 @@ class RestRoutesTest extends AnyWordSpec with Matchers with ScalatestRouteTest w
       val thermometerEditor = ThermometerEditor("34dfa3dc8e655049117e49b4",
         Thermometer(Some("updated-test"), None, None))
 
+      val correctResponse = "AcknowledgedUpdateResult{matchedCount=0, modifiedCount=0, upsertedId=null}"
+
       val request = Patch("/api/v1/thermometers/update")
         .withEntity(ContentTypes.`application/json`, Json.toJson(thermometerEditor).toString())
 
       request ~> route ~> check {
         status shouldBe StatusCodes.BadRequest
+        contentType shouldBe ContentTypes.`application/json`
+
+        val responseString = responseAs[String]
+        responseString shouldBe correctResponse
       }
     }
 
@@ -153,8 +220,16 @@ class RestRoutesTest extends AnyWordSpec with Matchers with ScalatestRouteTest w
       val request = Patch("/api/v1/thermometers/update")
         .withEntity(ContentTypes.`application/json`, Json.toJson(thermometerEditor).toString())
 
+      val correctResponsePart =
+        "Write error: WriteError{code=66, message='Performing an update on the path '_id' " +
+          "would modify the immutable field '_id'', details={}}."
+
       request ~> route ~> check {
         status shouldBe StatusCodes.BadRequest
+        contentType shouldBe ContentTypes.`application/json`
+
+        val responseString = responseAs[String]
+        responseString should include(correctResponsePart)
       }
     }
 
@@ -165,9 +240,15 @@ class RestRoutesTest extends AnyWordSpec with Matchers with ScalatestRouteTest w
       val request = Patch("/api/v1/thermometers/update")
         .withEntity(ContentTypes.`application/json`, Json.toJson(thermometerEditor).toString())
 
+      val correctResponse =
+        "AcknowledgedUpdateResult{matchedCount=0, modifiedCount=0, upsertedId=null}"
+
       request ~> route ~> check {
         status shouldBe StatusCodes.BadRequest
         contentType shouldBe ContentTypes.`application/json`
+
+        val responseString = responseAs[String]
+        responseString shouldBe correctResponse
       }
     }
 
@@ -176,9 +257,14 @@ class RestRoutesTest extends AnyWordSpec with Matchers with ScalatestRouteTest w
 
       val request = Delete("/api/v1/thermometers/delete/64dfa3dc8e655049117e49b4")
 
+      val correctRespond = "AcknowledgedDeleteResult{deletedCount=1}"
+
       request ~> route ~> check {
         status shouldBe StatusCodes.OK
         contentType shouldBe ContentTypes.`application/json`
+
+        val responseString = responseAs[String]
+        responseString shouldBe correctRespond
       }
     }
 
@@ -186,8 +272,14 @@ class RestRoutesTest extends AnyWordSpec with Matchers with ScalatestRouteTest w
 
       val request = Delete("/api/v1/thermometers/delete/64dfa3dc8e655049117e49b")
 
+      val correctResponse = "Error: id must have exactly 24 letters and consist of hex letters and digits only"
+
       request ~> route ~> check {
         status shouldBe StatusCodes.BadRequest
+        contentType shouldBe ContentTypes.`application/json`
+
+        val responseString = responseAs[String]
+        responseString shouldBe correctResponse
       }
     }
 
@@ -195,27 +287,39 @@ class RestRoutesTest extends AnyWordSpec with Matchers with ScalatestRouteTest w
 
       val request = Delete("/api/v1/thermometers/delete/64dfa3dc8e655049117749b4")
 
+      val correctResponse = "AcknowledgedDeleteResult{deletedCount=0}"
+
       request ~> route ~> check {
         status shouldBe StatusCodes.BadRequest
+        contentType shouldBe ContentTypes.`application/json`
+
+        val responseString = responseAs[String]
+        responseString shouldBe correctResponse
       }
     }
-
-
-    // START
-    // Add thermometer report to a database
-    val action = ThermometerAction(new ObjectId("64dfa3dc8e655049117e49b4"), Some(10))
-    val thermometerActor = testActorSystem.actorOf(Props(ThermometerActor(requestTimeout, mongoActor)))
-    thermometerActor ! action
-    // END
 
     // GET api/v1/thermometers/reports/list test
     "return a 200 for GET api/v1/thermometers/reports/list for correct page" in {
 
       val request = Get("/api/v1/thermometers/reports/list?page=1&page_size=10")
 
+      val correctResponseParts: Seq[String] = Seq(
+
+        "FulfilledFuture({\"count\":1,\"results\":[{\"lastTemperature\":null,",
+
+        "\"thermometerId\":{\"$oid\":\"64dfa3dc8e655049117e49b4\"}}],\"page\":1,\"page_size\":10,\"next_page\":false})"
+
+      )
+
       request ~> route ~> check {
         status shouldBe StatusCodes.OK
         contentType shouldBe ContentTypes.`application/json`
+
+        val responseEntity = response.entity
+        val responseString = responseEntity.toStrict(5.seconds).map(_.data.utf8String).toString
+        correctResponseParts.foreach{
+          part => responseString should include(part)
+        }
       }
     }
 
@@ -232,9 +336,23 @@ class RestRoutesTest extends AnyWordSpec with Matchers with ScalatestRouteTest w
 
       val request = Get("/api/v1/thermometers/reports/list")
 
+      val correctResponseParts: Seq[String] = Seq(
+
+        "FulfilledFuture({\"count\":1,\"results\":[{\"lastTemperature\":null,",
+
+        "\"thermometerId\":{\"$oid\":\"64dfa3dc8e655049117e49b4\"}}],\"page\":1,\"page_size\":10,\"next_page\":false})"
+
+      )
+
       request ~> route ~> check {
         status shouldBe StatusCodes.OK
         contentType shouldBe ContentTypes.`application/json`
+
+        val responseEntity = response.entity
+        val responseString = responseEntity.toStrict(5.seconds).map(_.data.utf8String).toString
+        correctResponseParts.foreach {
+          part => responseString should include(part)
+        }
       }
     }
 
@@ -248,9 +366,23 @@ class RestRoutesTest extends AnyWordSpec with Matchers with ScalatestRouteTest w
 
       val request = Get(s"/api/v1/thermometers/reports/$thermometerId?from=$createdAtMin&till=$createdAtMax")
 
+      val correctResponseParts: Seq[String] = Seq(
+
+        "\"thermometerId\": {\"$oid\": \"64dfa3dc8e655049117e49b4\"}, \"temperature\": 10",
+        "\"thermometerId\": {\"$oid\": \"64dfa3dc8e655049117e49b4\"}, \"temperature\": -10",
+        "\"thermometerId\": {\"$oid\": \"64dfa3dc8e655049117e49b4\"}, \"temperature\": null"
+
+      )
+
       request ~> route ~> check {
         status shouldBe StatusCodes.OK
         contentType shouldBe ContentTypes.`application/json`
+
+        val responseEntity = response.entity
+        val responseString = responseEntity.toStrict(5.seconds).map(_.data.utf8String).toString
+        correctResponseParts.foreach {
+          part => responseString should include(part)
+        }
       }
     }
 
@@ -277,8 +409,16 @@ class RestRoutesTest extends AnyWordSpec with Matchers with ScalatestRouteTest w
 
       val request = Get(s"/api/v1/thermometers/reports/$thermometerId?from=$createdAtMin&till=$createdAtMax")
 
+      val correctResponse =
+        "FulfilledFuture(Error: createdAtMin and createdAtMax must be in the format 'yyyy-MM-dd'T'HH:mm:ss.SSSZ')"
+
       request ~> route ~> check {
         status shouldBe StatusCodes.BadRequest
+        contentType shouldBe ContentTypes.`application/json`
+
+        val responseEntity = response.entity
+        val responseString = responseEntity.toStrict(5.seconds).map(_.data.utf8String).toString
+        responseString shouldBe correctResponse
       }
     }
 
@@ -291,8 +431,16 @@ class RestRoutesTest extends AnyWordSpec with Matchers with ScalatestRouteTest w
 
       val request = Get(s"/api/v1/thermometers/reports/$thermometerId?from=$createdAtMin&till=$createdAtMax")
 
+      val correctResponse =
+        "FulfilledFuture(Error: createdAtMin and createdAtMax must be in the format 'yyyy-MM-dd'T'HH:mm:ss.SSSZ')"
+
       request ~> route ~> check {
         status shouldBe StatusCodes.BadRequest
+        contentType shouldBe ContentTypes.`application/json`
+
+        val responseEntity = response.entity
+        val responseString = responseEntity.toStrict(5.seconds).map(_.data.utf8String).toString
+        responseString shouldBe correctResponse
       }
     }
 
@@ -305,8 +453,16 @@ class RestRoutesTest extends AnyWordSpec with Matchers with ScalatestRouteTest w
 
       val request = Get(s"/api/v1/thermometers/reports/$thermometerId?from=$createdAtMin&till=$createdAtMax")
 
+      val correctResponse =
+        "FulfilledFuture(Error: createdAtMin and createdAtMax must be in the format 'yyyy-MM-dd'T'HH:mm:ss.SSSZ')"
+
       request ~> route ~> check {
         status shouldBe StatusCodes.BadRequest
+        contentType shouldBe ContentTypes.`application/json`
+
+        val responseEntity = response.entity
+        val responseString = responseEntity.toStrict(5.seconds).map(_.data.utf8String).toString
+        responseString shouldBe correctResponse
       }
     }
 
@@ -319,8 +475,16 @@ class RestRoutesTest extends AnyWordSpec with Matchers with ScalatestRouteTest w
 
       val request = Get(s"/api/v1/thermometers/reports/$thermometerId?from=$createdAtMin&till=$createdAtMax")
 
+      val correctResponse =
+        "FulfilledFuture(Error: thermometerId must have exactly 24 letters and consist of hex letters and digits only)"
+
       request ~> route ~> check {
         status shouldBe StatusCodes.BadRequest
+        contentType shouldBe ContentTypes.`application/json`
+
+        val responseEntity = response.entity
+        val responseString = responseEntity.toStrict(5.seconds).map(_.data.utf8String).toString
+        responseString shouldBe correctResponse
       }
     }
 
@@ -335,9 +499,85 @@ class RestRoutesTest extends AnyWordSpec with Matchers with ScalatestRouteTest w
       // Send the GET request to the test route
       val request = Get(s"/api/v1/thermometers/statistics?from=$createdAtMin&till=$createdAtMax&tmp_min=$minimumOpt")
 
+      val correctResponse =
+        "FulfilledFuture([{\"minTemperature\": -10, \"thermometerId\": {\"$oid\": \"64dfa3dc8e655049117e49b4\"}}])"
+
       request ~> route ~> check {
         status shouldBe StatusCodes.OK
         contentType shouldBe ContentTypes.`application/json`
+
+        val responseEntity = response.entity
+        val responseString = responseEntity.toStrict(5.seconds).map(_.data.utf8String).toString
+        responseString shouldBe correctResponse
+      }
+    }
+
+    "return a 200 for GET api/v1/thermometers/statistics with valid parameters and maximum operation" in {
+
+      // Define valid parameters for the maximum operation
+      val createdAtMin = "2000-01-01T00:00:00.000-0000"
+      val createdAtMax = "2050-01-31T23:59:59.999-0000"
+      val maximumOpt = true
+
+      // Send the GET request to the test route
+      val request = Get(s"/api/v1/thermometers/statistics?from=$createdAtMin&till=$createdAtMax&tmp_max=$maximumOpt")
+
+      val correctResponse =
+        "FulfilledFuture([{\"maxTemperature\": 10, \"thermometerId\": {\"$oid\": \"64dfa3dc8e655049117e49b4\"}}])"
+
+      request ~> route ~> check {
+        status shouldBe StatusCodes.OK
+        contentType shouldBe ContentTypes.`application/json`
+
+        val responseEntity = response.entity
+        val responseString = responseEntity.toStrict(5.seconds).map(_.data.utf8String).toString
+        responseString shouldBe correctResponse
+      }
+    }
+
+    "return a 200 for GET api/v1/thermometers/statistics with valid parameters and average operation" in {
+
+      // Define valid parameters for the average operation
+      val createdAtMin = "2000-01-01T00:00:00.000-0000"
+      val createdAtMax = "2050-01-31T23:59:59.999-0000"
+      val averageOpt = true
+
+      // Send the GET request to the test route
+      val request = Get(s"/api/v1/thermometers/statistics?from=$createdAtMin&till=$createdAtMax&tmp_avg=$averageOpt")
+
+      val correctResponse =
+        "FulfilledFuture([{\"thermometerId\": {\"$oid\": \"64dfa3dc8e655049117e49b4\"}, \"avgTemperature\": 0.0}])"
+
+      request ~> route ~> check {
+        status shouldBe StatusCodes.OK
+        contentType shouldBe ContentTypes.`application/json`
+
+        val responseEntity = response.entity
+        val responseString = responseEntity.toStrict(5.seconds).map(_.data.utf8String).toString
+        responseString shouldBe correctResponse
+      }
+    }
+
+    "return a 200 for GET api/v1/thermometers/statistics with valid parameters and median operation" in {
+
+      // Define valid parameters for the median operation
+      val createdAtMin = "2000-01-01T00:00:00.000-0000"
+      val createdAtMax = "2050-01-31T23:59:59.999-0000"
+      val medianOpt = true
+
+      // Send the GET request to the test route
+      val request = Get(s"/api/v1/thermometers/statistics?from=$createdAtMin&till=$createdAtMax&tmp_med=$medianOpt")
+
+      val correctResponse =
+        "FulfilledFuture([{\"thermometerId\": {\"$oid\": \"64dfa3dc8e655049117e49b4\"}, \"median\": -10}])"
+
+      request ~> route ~> check {
+        status shouldBe StatusCodes.OK
+        contentType shouldBe ContentTypes.`application/json`
+
+        val responseEntity = response.entity
+        val responseString = responseEntity.toStrict(5.seconds).map(_.data.utf8String).toString
+        responseString shouldBe correctResponse
       }
     }
 
@@ -352,15 +592,21 @@ class RestRoutesTest extends AnyWordSpec with Matchers with ScalatestRouteTest w
       val request = Get(s"/api/v1/thermometers/statistics?from=$createdAtMin&till=$createdAtMax" +
         s"&tmp_min=$minimumOpt&tmp_avg=$averageOpt")
 
+      val correctResponse =
+        "Exactly one operation from minimum/maximum/average/median must be selected."
+
       request ~> route ~> check {
         status shouldBe StatusCodes.BadRequest
         contentType shouldBe ContentTypes.`application/json`
+
+        val responseString = responseAs[String]
+        responseString shouldBe correctResponse
       }
     }
 
-    "return a 400 for GET api/v1/thermometers/statistics with invalid date parameters" in {
+    "return a 400 for GET api/v1/thermometers/statistics with invalid createdAtMax parameter" in {
 
-      // Define invalid parameters for the minimum operation
+      // Define invalid createdAtMax parameters for the minimum operation
       val createdAtMin = "2000-01-01T00:00:00.000-0000"
       val createdAtMax = "hi"
       val minimumOpt = true
@@ -368,9 +614,16 @@ class RestRoutesTest extends AnyWordSpec with Matchers with ScalatestRouteTest w
       val request = Get(s"/api/v1/thermometers/statistics?from=$createdAtMin&till=$createdAtMax" +
         s"&tmp_min=$minimumOpt")
 
+      val correctResponse =
+        "FulfilledFuture(Error: createdAtMin and createdAtMax must be in the format 'yyyy-MM-dd'T'HH:mm:ss.SSSZ')"
+
       request ~> route ~> check {
         status shouldBe StatusCodes.BadRequest
         contentType shouldBe ContentTypes.`application/json`
+
+        val responseEntity = response.entity
+        val responseString = responseEntity.toStrict(5.seconds).map(_.data.utf8String).toString
+        responseString shouldBe correctResponse
       }
     }
 
@@ -384,9 +637,16 @@ class RestRoutesTest extends AnyWordSpec with Matchers with ScalatestRouteTest w
       val request = Get(s"/api/v1/thermometers/statistics?from=$createdAtMin&till=" +
         s"&tmp_min=$minimumOpt")
 
+      val correctResponse =
+        "FulfilledFuture(Error: createdAtMin and createdAtMax must be in the format 'yyyy-MM-dd'T'HH:mm:ss.SSSZ')"
+
       request ~> route ~> check {
         status shouldBe StatusCodes.BadRequest
         contentType shouldBe ContentTypes.`application/json`
+
+        val responseEntity = response.entity
+        val responseString = responseEntity.toStrict(5.seconds).map(_.data.utf8String).toString
+        responseString shouldBe correctResponse
       }
     }
 
@@ -399,9 +659,15 @@ class RestRoutesTest extends AnyWordSpec with Matchers with ScalatestRouteTest w
       // Send the GET request to the test route
       val request = Get(s"/api/v1/thermometers/statistics?from=$createdAtMin&till=$createdAtMax")
 
+      val correctResponse =
+        "Exactly one operation from minimum/maximum/average/median must be selected."
+
       request ~> route ~> check {
         status shouldBe StatusCodes.BadRequest
         contentType shouldBe ContentTypes.`application/json`
+
+        val responseString = responseAs[String]
+        responseString shouldBe correctResponse
       }
     }
   }
