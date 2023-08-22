@@ -34,11 +34,16 @@ class RestRoutesTest extends AnyWordSpec with Matchers with ScalatestRouteTest w
     // Drop the database before running the tests to ensure a clean state
     dropDatabase()
 
-    val actionPositiveTen = ThermometerAction(new ObjectId("64dfa3dc8e655049117e49b4"), Some(10))
+    val actionPositiveTen = ThermometerAction(
+      thermometerId = new ObjectId("64dfa3dc8e655049117e49b4"), temperature = Some(10))
     Thread.sleep(1)
-    val actionNegativeTen = ThermometerAction(new ObjectId("64dfa3dc8e655049117e49b4"), Some(-10))
+
+    val actionNegativeTen = ThermometerAction(
+      thermometerId = new ObjectId("64dfa3dc8e655049117e49b4"), temperature = Some(-10))
     Thread.sleep(1)
-    val actionNull = ThermometerAction(new ObjectId("64dfa3dc8e655049117e49b4"), None)
+
+    val actionNull = ThermometerAction(
+      thermometerId = new ObjectId("64dfa3dc8e655049117e49b4"), temperature = None)
 
     Seq(actionPositiveTen, actionNegativeTen, actionNull).foreach { action =>
       thermometerActor ! action

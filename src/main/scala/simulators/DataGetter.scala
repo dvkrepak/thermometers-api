@@ -1,7 +1,5 @@
 package simulators
 
-
-
 import akka.actor.{ActorSystem, Cancellable}
 
 import scala.concurrent.duration.FiniteDuration
@@ -16,9 +14,8 @@ case class DataGetter(private val adapter: ThermometerAdapter, private val syste
 
   def dataRequestScheduler(initialDelay: FiniteDuration, interval: FiniteDuration): Cancellable = {
     val cancellable = system.scheduler.scheduleWithFixedDelay(initialDelay, interval) {
-      () => {
+      () =>
         performDataRequest()
-      }
     }
     cancellable
   }
