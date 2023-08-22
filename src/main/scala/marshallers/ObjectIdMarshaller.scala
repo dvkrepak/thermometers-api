@@ -3,6 +3,10 @@ package marshallers
 import org.mongodb.scala.bson.ObjectId
 import play.api.libs.json.{Format, JsResult, JsValue, Json}
 
+
+/**
+ * A trait that provides JSON marshalling support for `ObjectId`
+ */
 trait ObjectIdMarshaller {
 
   implicit val objectIdFormat: Format[ObjectId] = new Format[ObjectId] {
