@@ -32,7 +32,6 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
 
           val combinedResponse = futureResponse.zip(countFuture)
 
-
           handleBasicJsonPaginationResponse(combinedResponse, page, pageSize)
           }
         }
@@ -43,6 +42,7 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
     get {
       // GET api/v1/thermometers/{_id: String}
       pathEndOrSingleSlash {
+
         lazy val lazyResponse: Future[Seq[Document]] = findThermometer(_id)
         val futureResponse = withValidation(lazyResponse).mapTo[Seq[Document]]
 
@@ -59,9 +59,8 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
           entity(as[Thermometer]) { thermometer => {
 
             val withDefaultThermometer: Thermometer = Thermometer.withDefaultCreated(thermometer)
-            val futureResponse: Future[InsertOneResult] = {
+            val futureResponse: Future[InsertOneResult] =
               createThermometer(Json.toJson(withDefaultThermometer).toString())
-            }
 
             handleBasicResponse(futureResponse, StatusCodes.Created, StatusCodes.BadRequest)
           }
@@ -78,9 +77,9 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
         pathEndOrSingleSlash {
           entity(as[ThermometerEditor]) { editor => {
 
-            val data = Json.toJson(Thermometer.setEditedAt(editor.data))
+            val thermometerEditor = Json.toJson(Thermometer.setEditedAt(editor.data))
             lazy val lazyResponse: Future[UpdateResult] =
-              editThermometer(editor.thermometerId, data.toString())
+              editThermometer(editor.thermometerId, thermometerEditor.toString())
             val futureResponse = withValidation(lazyResponse).mapTo[UpdateResult]
 
             onComplete(futureResponse) {
@@ -218,7 +217,7 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
       case Success(data) =>
         if (data.isEmpty) {
           // If there is no data, return 204 No Content
-          complete(StatusCodes.NoContent, HttpEntity(ContentTypes.`application/json`, "[]"))
+          complete(StatusCodes.NoContent)
         } else {
           val resultJson = data.map(_.toJson)
           val jsonResponse = "[" + resultJson.mkString(",") + "]"
@@ -251,7 +250,7 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
 
         if (data.isEmpty) {
           // If there is no data, return 204 No Content
-          complete(StatusCodes.NoContent, HttpEntity(ContentTypes.`application/json`, "[]"))
+          complete(StatusCodes.NoContent)
         } else {
 
           val count: Long = response._2 // Count of all documents
