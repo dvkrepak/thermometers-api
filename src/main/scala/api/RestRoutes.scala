@@ -159,7 +159,8 @@ trait RestRoutes extends ThermometerApi with ThermometerMarshaller {
 
   private val getStatisticsDataList: Route = pathPrefix(api / version / service / "statistics") {
     get {
-      // GET api/v1/thermometers/statistics/?from={Date}&till={Date}&tmp_min={Boolean}
+      // GET api/v1/thermometers/statistics/?from={Date}&till={Date}
+      //  &tmp_min={Boolean}&tmp_max={Boolean}&tmp_avg={Boolean}&tmp_med={Boolean}
       pathEndOrSingleSlash {
         parameters(
           "from".as[String],

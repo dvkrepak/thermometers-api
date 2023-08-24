@@ -4,7 +4,7 @@ import akka.actor.{Actor, ActorRef, Status}
 import akka.event.{Logging, LoggingAdapter}
 import akka.http.caching.scaladsl.Cache
 import akka.http.scaladsl.model.Uri
-import messages.MongoMessages.{DropDatabase, _}
+import messages.MongoMessages._
 import org.mongodb.scala.bson.Document
 import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase}
 import utils.{CacheSettings, MongoUtils}
@@ -13,7 +13,7 @@ import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success, Try}
 
 class MongoActor(connectionString: String = "mongodb://localhost:27017",
-                 databaseName: String = "optimsys-db")
+                 databaseName: String = "thermometers-db")
     extends Actor {
 
   private val mongoClient: MongoClient = MongoClient(connectionString)
